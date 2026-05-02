@@ -228,13 +228,19 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 0.75rem;
+            padding: 1.25rem 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 1rem;
             border: 1px solid var(--border-color);
+            transition: transform 0.2s, background 0.2s;
         }
-        .stat-value { font-size: 1.5rem; font-weight: 900; }
-        .stat-label { font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; font-weight: 700; margin-top: 0.25rem; }
+        .stat-box:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: scale(1.02);
+        }
+        .stat-value { font-size: 1.75rem; font-weight: 900; line-height: 1.2; }
+        .stat-label { font-size: 0.65rem; text-transform: uppercase; color: #9ca3af; font-weight: 800; margin-top: 0.5rem; letter-spacing: 0.05em; }
+        .stat-icon { font-size: 1.25rem; margin-bottom: 0.5rem; }
 
         .dist-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
         .dist-bar { height: 1.25rem; background: var(--accent); border-radius: 0.25rem; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.75rem; font-weight: 900; transition: width 0.5s; min-width: 1.5rem; }
@@ -246,7 +252,7 @@
     <div id="home-screen" class="min-h-screen flex flex-col items-center p-4">
         <header class="w-full max-w-4xl py-6 flex justify-between items-center border-b border-gray-700 mb-8 animate-fade">
             <div class="flex items-center gap-4">
-                <button onclick="openModal('profile-modal')" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition active:scale-90">
+                <button onclick="openModal('profile-modal')" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition active:scale-90 border border-gray-600 shadow-lg">
                     <i class="fas fa-user text-white"></i>
                 </button>
                 <div class="flex items-center">
@@ -430,44 +436,50 @@
     <!-- MODALS -->
     <div id="profile-modal" class="modal" onclick="closeModal('profile-modal')">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-2xl font-black mb-6 text-center uppercase tracking-widest">Statistics</h3>
+            <h3 class="text-2xl font-black mb-8 text-center uppercase tracking-widest text-blue-500">Your Progress</h3>
             
-            <div class="grid grid-cols-4 gap-2 mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
                 <div class="stat-box">
+                    <i class="fas fa-gamepad stat-icon text-blue-400"></i>
                     <span id="stat-played" class="stat-value">0</span>
                     <span class="stat-label">Played</span>
                 </div>
                 <div class="stat-box">
+                    <i class="fas fa-chart-line stat-icon text-green-400"></i>
                     <span id="stat-winpct" class="stat-value">0</span>
                     <span class="stat-label">Win %</span>
                 </div>
                 <div class="stat-box">
+                    <i class="fas fa-fire stat-icon text-orange-500"></i>
                     <span id="stat-streak" class="stat-value">0</span>
-                    <span class="stat-label">Current</span>
+                    <span class="stat-label">Streak</span>
                 </div>
                 <div class="stat-box">
+                    <i class="fas fa-trophy stat-icon text-yellow-500"></i>
                     <span id="stat-maxstreak" class="stat-value">0</span>
-                    <span class="stat-label">Max</span>
+                    <span class="stat-label">Max Streak</span>
                 </div>
             </div>
 
-            <h4 class="text-sm font-black uppercase mb-4 tracking-widest text-gray-500">Guess Distribution</h4>
-            <div id="guess-distribution" class="mb-8">
+            <h4 class="text-xs font-black uppercase mb-4 tracking-widest text-gray-500 flex items-center gap-2">
+                <i class="fas fa-signal"></i> Guess Distribution
+            </h4>
+            <div id="guess-distribution" class="mb-10">
                 <!-- Javascript will fill this -->
             </div>
 
-            <div class="grid grid-cols-1 gap-4">
-                <button onclick="exportSave()" class="bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-500 transition flex items-center justify-center gap-2">
-                    <i class="fas fa-file-export"></i> Save to File
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="exportSave()" class="bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2 shadow-md">
+                    <i class="fas fa-save text-blue-400"></i> Export Save
                 </button>
-                <button onclick="document.getElementById('import-file').click()" class="bg-gray-800 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2">
-                    <i class="fas fa-file-import"></i> Load from File
+                <button onclick="document.getElementById('import-file').click()" class="bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2 shadow-md">
+                    <i class="fas fa-upload text-green-400"></i> Import Save
                 </button>
                 <input type="file" id="import-file" class="hidden" accept=".json" onchange="importSave(this)">
             </div>
 
-            <div class="flex justify-center mt-8">
-                <button onclick="closeModal('profile-modal')" class="text-gray-500 font-bold hover:text-white transition">Close</button>
+            <div class="flex justify-center mt-10">
+                <button onclick="closeModal('profile-modal')" class="bg-blue-600 text-white px-10 py-3 rounded-full font-black uppercase tracking-widest text-sm hover:bg-blue-500 transition shadow-xl">Close</button>
             </div>
         </div>
     </div>
