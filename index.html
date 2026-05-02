@@ -1228,9 +1228,8 @@
             }
             
             if (!alreadySaved) {
-                if (currentMode === 'daily' || currentMode === 'practice') {
-                    updateGlobalStats(won, guesses.length);
-                }
+                // Now including all modes in global statistics
+                updateGlobalStats(won, guesses.length);
                 
                 if (currentMode === 'daily') {
                     const streak = updateStreak(won);
