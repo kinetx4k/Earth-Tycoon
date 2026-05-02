@@ -221,7 +221,7 @@
             gap: 12px;
             border-bottom: 1px solid var(--border-color);
         }
-        .autocomplete-item:hover { background-color: var(--accent); color: white; }
+        .autocomplete-item:hover, .autocomplete-item.active { background-color: var(--accent); color: white; }
     </style>
 </head>
 <body>
@@ -339,7 +339,6 @@
             </div>
             <div class="flex flex-col items-center text-center">
                 <h1 class="text-2xl font-black tracking-widest uppercase">Vexle</h1>
-                <!-- Fixed: Added missing IDs for sub-headers to prevent null pointer error -->
                 <div id="daily-info" class="text-xs text-gray-400 mt-1"></div>
                 <div id="game-info-sub" class="text-[10px] text-gray-500 font-bold uppercase mt-1"></div>
             </div>
@@ -543,6 +542,8 @@
         let targetImageData = null;
         let infiniteMode = false;
         let dailyDateKey = "2026-05-02";
+        let activeAutocompleteIndex = -1;
+        let filteredCountriesList = [];
 
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -622,7 +623,6 @@
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             
-            // Fixed: Check for null before setting textContent
             const dailyInfoEl = document.getElementById('daily-info');
             const gameInfoSubEl = document.getElementById('game-info-sub');
             if (dailyInfoEl) dailyInfoEl.textContent = `May ${dayNum}, 2026 - Day ${dayNum}`;
@@ -779,15 +779,18 @@
             document.getElementById('hint-btn').style.display = 'none';
             document.getElementById('hint-btn').disabled = false;
             document.getElementById('guesses-container').innerHTML = '';
-            if (currentMode === 'daily' || currentMode === 'archive' || (currentMode === 'practice' && !document.getElementById('infinite-toggle').checked)) {
-                for(let i=0; i<6; i++) {
-                    document.getElementById('guesses-container').innerHTML += `<div class="guess-row empty" id="guess-row-${i}"></div>`;
-                }
-                maxGuesses = 6;
-                infiniteMode = false;
-            } else {
-                infiniteMode = true;
+            
+            infiniteMode = (currentMode === 'practice' && document.getElementById('infinite-toggle').checked);
+            
+            // Always show 6 guess fields initially
+            for(let i=0; i<6; i++) {
+                document.getElementById('guesses-container').innerHTML += `<div class="guess-row empty" id="guess-row-${i}"></div>`;
             }
+            
+            if (!infiniteMode) {
+                maxGuesses = 6;
+            }
+            
             ctx.fillStyle = '#1e1e1e';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
@@ -860,7 +863,14 @@
 
         async function handleGuess() {
             if (!gameActive) return;
-            const inputVal = document.getElementById('country-input').value.trim();
+            let inputVal = document.getElementById('country-input').value.trim();
+            
+            // If enter is pressed and there are autocomplete suggestions, take the first/active one
+            if (filteredCountriesList.length > 0) {
+                const idx = activeAutocompleteIndex >= 0 ? activeAutocompleteIndex : 0;
+                inputVal = filteredCountriesList[idx].name;
+            }
+
             const guessObj = countries.find(c => c.name.toLowerCase() === inputVal.toLowerCase());
             if (!guessObj) {
                 document.getElementById('country-input').classList.add('shake');
@@ -886,7 +896,8 @@
             const index = guesses.length;
             guesses.push(guessObj);
             let row;
-            if (!infiniteMode && index < 6) {
+            // Populate existing empty rows if index < 6, otherwise create new one for infinite mode
+            if (index < 6) {
                 row = document.getElementById(`guess-row-${index}`);
                 row.classList.remove('empty');
             } else {
@@ -980,23 +991,55 @@
             if (!val) return;
             const listDiv = document.getElementById("autocomplete-list");
             listDiv.classList.remove('hidden');
-            countries.filter(c => c.name.toLowerCase().includes(val.toLowerCase())).slice(0, 6).forEach(c => {
+            
+            filteredCountriesList = countries.filter(c => c.name.toLowerCase().includes(val.toLowerCase())).slice(0, 6);
+            activeAutocompleteIndex = -1; // Reset selection on typing
+
+            filteredCountriesList.forEach((c, index) => {
                 const div = document.createElement("div");
                 div.className = "autocomplete-item text-sm";
+                div.id = "autocomplete-item-" + index;
                 div.innerHTML = `<img src="https://flagcdn.com/w40/${c.code}.png" class="w-6 h-4 object-cover rounded-sm"><span>${c.name}</span>`;
-                div.onclick = () => { inputElement.value = c.name; handleGuess(); };
+                div.onclick = () => { 
+                    inputElement.value = c.name; 
+                    handleGuess(); 
+                };
                 listDiv.appendChild(div);
             });
         });
+
+        function updateAutocompleteSelection() {
+            const items = document.querySelectorAll('.autocomplete-item');
+            items.forEach((item, idx) => {
+                if (idx === activeAutocompleteIndex) item.classList.add('active');
+                else item.classList.remove('active');
+            });
+            if (activeAutocompleteIndex >= 0 && filteredCountriesList[activeAutocompleteIndex]) {
+                inputElement.value = filteredCountriesList[activeAutocompleteIndex].name;
+            }
+        }
 
         function closeAllLists() { 
             const list = document.getElementById("autocomplete-list");
             list.innerHTML = ''; 
             list.classList.add('hidden'); 
+            filteredCountriesList = [];
+            activeAutocompleteIndex = -1;
         }
 
         document.getElementById('guess-btn').onclick = handleGuess;
-        inputElement.onkeydown = (e) => { if(e.key === "Enter") handleGuess(); };
+        
+        inputElement.onkeydown = (e) => { 
+            if (e.key === "Enter") {
+                handleGuess(); 
+            } else if (e.key === "Tab") {
+                if (filteredCountriesList.length > 0) {
+                    e.preventDefault();
+                    activeAutocompleteIndex = (activeAutocompleteIndex + 1) % filteredCountriesList.length;
+                    updateAutocompleteSelection();
+                }
+            }
+        };
 
         function mulberry32(a) {
             return function() {
