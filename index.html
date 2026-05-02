@@ -468,6 +468,10 @@
                 <!-- Javascript will fill this -->
             </div>
 
+            <div id="country-guess-stats" class="mb-10">
+                <!-- New section for country frequency -->
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onclick="exportSave()" class="bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2 shadow-md">
                     <i class="fas fa-save text-blue-400"></i> Export Save
@@ -665,7 +669,8 @@
                 gamesPlayed: 0,
                 gamesWon: 0,
                 maxStreak: 0,
-                distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+                distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+                countryFrequency: {} 
             };
             return JSON.parse(localStorage.getItem('vexle-global-stats') || JSON.stringify(defaultStats));
         }
@@ -680,6 +685,11 @@
                 }
             }
             
+            // Track how often each country was guessed
+            guesses.forEach(g => {
+                stats.countryFrequency[g.code] = (stats.countryFrequency[g.code] || 0) + 1;
+            });
+
             const streakData = getStreak();
             if (streakData.count > stats.maxStreak) {
                 stats.maxStreak = streakData.count;
@@ -716,6 +726,50 @@
                     </div>
                 `;
                 distContainer.appendChild(row);
+            }
+
+            // Country Frequency section
+            const countryStatsContainer = document.getElementById('country-guess-stats');
+            countryStatsContainer.innerHTML = '';
+            
+            const freqEntries = Object.entries(stats.countryFrequency || {})
+                .sort((a, b) => b[1] - a[1]) // Sort by frequency descending
+                .slice(0, 15); // Show top 15 most guessed
+
+            if (freqEntries.length > 0) {
+                const mostGuessed = freqEntries[0];
+                const mostGuessedCountry = countries.find(c => c.code === mostGuessed[0]);
+                
+                const header = document.createElement('div');
+                header.className = 'mb-4 p-3 bg-gray-800/50 border-l-4 border-blue-500 rounded-r-lg';
+                header.innerHTML = `
+                    <p class="text-xs font-black uppercase text-gray-500 mb-1 tracking-widest">Global Guess Report</p>
+                    <p class="text-sm font-bold text-gray-200 italic">In ${stats.gamesPlayed} games, you've guessed ${mostGuessedCountry?.name || '...'} ${mostGuessed[1]} times!</p>
+                `;
+                countryStatsContainer.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar';
+                
+                freqEntries.forEach(([code, count]) => {
+                    const country = countries.find(c => c.code === code);
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between bg-gray-800/30 p-2 rounded border border-gray-700/50';
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <img src="https://flagcdn.com/w40/${code}.png" class="w-6 h-4 object-cover rounded-sm shadow">
+                            <span class="text-xs font-bold text-gray-300">${country ? country.name : code}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] uppercase font-black text-gray-500">Times:</span>
+                            <span class="text-xs font-black text-blue-400">${count}</span>
+                        </div>
+                    `;
+                    grid.appendChild(item);
+                });
+                countryStatsContainer.appendChild(grid);
+            } else {
+                 countryStatsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No guess data available yet.</p>';
             }
         }
 
