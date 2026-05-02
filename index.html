@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ricochet Klon</title>
+    <style>
+        /* Grundlegendes Styling und Layout */
+        :root {
+            --bg-color: #0d0d0d;
+            --text-color: #f8fafc;
+            --accent-color: #5b9cf6;
+            --success-color: #22c55e;
+            --danger-color: #ef4444;
+            --grid-color: #1e293b;
+            --wall-color: #2a2a2a;
+            
+            /* Start Screen Colors */
+            --start-page-bg: #0d0d0d;
+            --start-card-bg: #1c1c1c;
+            --start-blue: #5b9cf6;
+            --start-orange: #f98a4b;
+            --start-grey: #4b4b4b;
+            --start-text-muted: #9ca3af;
+
+            /* Game Screen Colors */
+            --game-bg: #050505;
+            --dot-color: #222;
+            --obs-orange: #9c4b15;
+            --tooltip-bg: #222;
+            --footer-text: #555;
+            --modal-bg: #1c1c1c;
+        }
+
+        /* LIGHT MODE VARIABLES */
+        body.light-mode {
+            --bg-color: #f8fafc;
+            --text-color: #0f172a;
+            --grid-color: #e2e8f0;
+            --wall-color: #cbd5e1;
+            
+            --start-page-bg: #e2e8f0;
+            --start-card-bg: #ffffff;
+            --start-grey: #cbd5e1;
+            --start-text-muted: #64748b;
+
+            --game-bg: #f0f0f0;
+            --dot-color: #ccc;
+            --obs-orange: #d97706;
+            --tooltip-bg: #fff;
+            --footer-text: #94a3b8;
+            --modal-bg: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--start-page-bg);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- START SCREEN STYLES --- */
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--start-page-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: background-color 0.3s;
+        }
+
+        .start-card {
+            background-color: var(--start-card-bg);
+            border-radius: 28px;
+            padding: 25px 35px 35px 35px;
+            width: 85%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: background-color 0.3s;
+        }
+
+        .start-header {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            gap: 10px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header-btn {
+            background-color: #111;
+            border: 1px solid #333;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        body.light-mode .header-btn {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
+        }
+
+        .header-btn.icon {
+            padding: 6px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+        }
+
+        /* LANGUAGE DROPDOWN STYLES */
+        .lang-container { position: relative; }
+
+        .lang-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            width: 140px;
+            overflow: hidden;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .lang-dropdown.show { display: block; }
+
+        body.light-mode .lang-dropdown {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .lang-option {
+            padding: 12px 16px;
+            color: #e5e7eb;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        body.light-mode .lang-option { color: #1e293b; }
+        .lang-option:hover { background-color: #2a2a2a; }
+        body.light-mode .lang-option:hover { background-color: #f1f5f9; }
+        .lang-option.active { color: #3b82f6; font-weight: bold; }
+        .lang-option .check { display: none; color: #3b82f6; font-weight: bold; }
+        .lang-option.active .check { display: inline; }
+
+        .start-graphic {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .bounce-lines {
+            display: flex;
+            gap: 6px;
+            align-items: flex-end;
+            margin-bottom: 10px;
+            height: 20px;
+        }
+
+        .b-line { background-color: #555; width: 4px; border-radius: 4px; }
+        body.light-mode .b-line { background-color: #cbd5e1; }
+        .b-line.short { height: 10px; }
+        .b-line.tall { height: 16px; }
+
+        .start-ball {
+            width: 50px;
+            height: 50px;
+            background-color: var(--start-blue);
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
+
+        .start-dots { display: flex; gap: 6px; }
+        .s-dot {
+            width: 16px;
+            height: 8px;
+            background-color: var(--start-grey);
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .s-dot.active { background-color: var(--start-orange); }
+
+        .start-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .title-blue { color: var(--start-blue); }
+        .title-orange { color: var(--start-orange); font-size: 1.1rem; font-weight: normal; }
+
+        .streak-badge {
+            background-color: #000;
+            border: 1px solid #333;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        body.light-mode .streak-badge {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #475569;
+        }
+        .streak-badge .num { color: var(--start-blue); font-weight: bold; font-size: 1rem; }
+
+        .start-date {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #eaeaea;
+            margin-bottom: 8px;
+            transition: color 0.3s;
+        }
+        body.light-mode .start-date { color: #0f172a; }
+
+        .start-subtitle {
+            color: #aaa;
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+            text-align: center;
+            transition: color 0.3s;
+        }
+        body.light-mode .start-subtitle { color: #475569; }
+
+        #play-today-btn {
+            background-color: var(--start-blue);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: background 0.2s;
+        }
+        #play-today-btn:hover { background-color: #4a86e0; }
+
+        .start-footer {
+            color: #777;
+            font-size: 0.8rem;
+            text-align: center;
+            transition: color 0.3s;
+        }
+        body.light-mode .start-footer { color: #64748b; }
+
+        /* --- GAME CONTAINER STYLES --- */
+        #game-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background: var(--game-bg);
+            width: 100%;
+            height: 100vh;
+            max-width: 600px;
+            position: relative;
+            transition: background-color 0.3s;
+        }
+
+        /* Game Header */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 20px 20px 10px 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .icon-btn {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .game-titles {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .game-date-small {
+            font-size: 0.75rem;
+            color: #666;
+            font-weight: bold;
+        }
+        .game-title-main {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ddd;
+        }
+        body.light-mode .game-title-main { color: #222; }
+
+        /* Progress Bar (5 Levels) */
+        .game-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 10px;
+            z-index: 10;
+        }
+        .prog-circle {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            border: 2px solid #333;
+            color: #555;
+            background: transparent;
+            transition: all 0.3s;
+        }
+        body.light-mode .prog-circle { border-color: #ccc; color: #999; }
+        .prog-circle.active {
+            border-color: var(--start-blue);
+            color: var(--start-blue);
+            background: rgba(91, 156, 246, 0.1);
+        }
+        .prog-line {
+            width: 20px;
+            height: 2px;
+            background-color: #333;
+            margin: 0 4px;
+            transition: all 0.3s;
+        }
+        body.light-mode .prog-line { background-color: #ccc; }
+
+        /* Canvas Area */
+        #canvas-wrapper {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            touch-action: none; /* Prevent scrolling while drawing */
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: 500px;
+            max-height: 500px;
+            aspect-ratio: 1 / 1;
+        }
+        
+        #drawCanvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            pointer-events: all; /* Important for drawing */
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+            height: auto;
+        }
+        #gameCanvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Tooltips & Overlays */
+        .bounces-pill {
+            position: absolute;
+            top: 20px;
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid #333;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #aaa;
+            pointer-events: none;
+            z-index: 10;
+            transition: all 0.3s;
+        }
+        body.light-mode .bounces-pill {
+            background: rgba(255, 255, 255, 0.8);
+            border-color: #ccc;
+            color: #555;
+        }
+
+        .launch-tooltip {
+            position: absolute;
+            background: var(--tooltip-bg);
+            border: 1px solid #333;
+            color: #eee;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: center;
+            max-width: 160px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 15;
+        }
+        body.light-mode .launch-tooltip { border-color: #ccc; color: #222; }
+        
+        .launch-tooltip.arrow-bottom::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            margin-left: -6px;
+            width: 12px;
+            height: 12px;
+            background: var(--tooltip-bg);
+            border-right: 1px solid #333;
+            border-bottom: 1px solid #333;
+            transform: rotate(45deg);
+        }
+        .launch-tooltip.arrow-top::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            margin-left: -6px;
+            width: 12px;
+            height: 12px;
+            background: var(--tooltip-bg);
+            border-left: 1px solid #333;
+            border-top: 1px solid #333;
+            transform: rotate(45deg);
+        }
+        body.light-mode .launch-tooltip::after { border-color: #ccc; }
+
+        /* Classic Targets UI (Hidden by default now) */
+        .targets-container {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            max-width: 500px;
+            display: none; /* Default hidden */
+            justify-content: space-around;
+            padding: 0 40px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .t-btn-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .t-btn-wrap .tick { width: 2px; height: 10px; background-color: #444; margin-bottom: 5px; }
+        .t-btn-wrap .letter { font-size: 1.5rem; font-weight: 900; color: #333; transition: color 0.2s; }
+        body.light-mode .t-btn-wrap .tick { background-color: #aaa; }
+        body.light-mode .t-btn-wrap .letter { color: #bbb; }
+        .t-btn-wrap:hover .letter { color: var(--start-blue); }
+
+        /* Precision Mode UI (Slider) */
+        .precision-container {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 40px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .slider-track {
+            width: 100%;
+            height: 30px;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        .tick-mark {
+            width: 1px;
+            height: 8px;
+            background-color: #444;
+        }
+        .tick-mark.major { height: 15px; width: 2px; }
+        body.light-mode .tick-mark { background-color: #aaa; }
+        
+        .slider-handle {
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 12px;
+            height: 35px;
+            background-color: var(--start-orange);
+            border-radius: 6px;
+            transform: translateX(-50%);
+            cursor: grab;
+            border: 2px solid #222;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            transition: background-color 0.2s;
+        }
+        body.light-mode .slider-handle { border-color: #fff; }
+        .slider-handle:active { cursor: grabbing; background-color: #ff9d66; }
+
+        /* Game Footer & Actions */
+        .game-footer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 10px 30px 30px 30px;
+            box-sizing: border-box;
+            color: var(--footer-text);
+            font-weight: bold;
+            font-size: 0.9rem;
+            z-index: 10;
+        }
+        
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .undo-btn {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #555;
+            background: none;
+            border: none;
+            padding: 5px 10px;
+            transition: color 0.2s;
+        }
+        .undo-btn:hover { color: #888; }
+        body.light-mode .undo-btn { color: #94a3b8; }
+        
+        .choose-text { display: flex; align-items: center; gap: 5px; color: #555; }
+        body.light-mode .choose-text { color: #94a3b8; }
+
+        /* Big Launch Button for Precision Mode */
+        .launch-btn-big {
+            background-color: var(--start-orange);
+            color: white;
+            border: none;
+            width: 100%;
+            max-width: 400px;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(249, 138, 75, 0.3);
+        }
+        .launch-btn-big:hover { background-color: #ff9d66; }
+        .launch-btn-big:disabled { background-color: #555; cursor: not-allowed; opacity: 0.5; box-shadow: none; }
+
+        /* Circular Next Button (Classic mode or overlay) */
+        .next-circle-btn {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: #222;
+            border: 1px solid #333;
+            color: #ccc;
+            display: none; /* Hidden normally */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 20;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        body.light-mode .next-circle-btn { background-color: #fff; border-color: #ccc; color: #555; }
+
+        /* Modals (Menu & How To Play) */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        body.light-mode .modal-overlay { background: rgba(255, 255, 255, 0.7); }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+
+        .modal-content {
+            background-color: var(--modal-bg);
+            width: 90%;
+            max-width: 400px;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            position: relative;
+            color: var(--text-color);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .close-btn {
+            background: #333;
+            border: none;
+            color: #aaa;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        body.light-mode .close-btn { background: #e2e8f0; color: #475569; }
+
+        /* Settings Menu Items */
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #333;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        body.light-mode .menu-item { border-bottom-color: #e2e8f0; }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-icon { margin-right: 10px; width: 20px; display: inline-block; text-align: center; color: #888;}
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        body.light-mode .slider { background-color: #cbd5e1; }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px; width: 20px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--success-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .menu-lang-select {
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        body.light-mode .menu-lang-select { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
+
+        .how-to-play-btn {
+            background-color: var(--start-blue);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .menu-footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        /* How to Play Tutorial Carousel */
+        .tutorial-img-container {
+            background: #111;
+            border-radius: 12px;
+            height: 180px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border: 1px solid #333;
+            overflow: hidden;
+        }
+        body.light-mode .tutorial-img-container { background: #f1f5f9; border-color: #cbd5e1; }
+        
+        .tut-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+        .tut-dot {
+            width: 6px; height: 6px; border-radius: 50%; background: #555;
+        }
+        .tut-dot.active { background: var(--start-blue); }
+        
+        .tut-title {
+            color: var(--start-blue);
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .tut-desc {
+            color: #aaa;
+            text-align: center;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 25px;
+        }
+        body.light-mode .tut-desc { color: #475569; }
+        
+        .tut-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .tut-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+        }
+        .tut-btn-prev { background: #2a2a2a; color: #888; }
+        body.light-mode .tut-btn-prev { background: #e2e8f0; color: #64748b; }
+        .tut-btn-next { background: var(--start-blue); color: white; }
+
+        /* Drawing Tool Visualization in Tutorial */
+        .tut-mockup { width: 80%; height: 80%; position: relative; }
+        .tut-ball { width: 16px; height: 16px; background: var(--start-blue); border-radius: 50%; position: absolute; bottom: 20px; left: 30%; }
+        .tut-line { position: absolute; border-top: 2px dashed var(--start-blue); width: 60px; transform: rotate(-45deg); transform-origin: left top; bottom: 28px; left: calc(30% + 8px); }
+        .tut-obs { width: 30px; height: 30px; border: 2px solid var(--start-orange); border-radius: 4px; position: absolute; top: 40px; left: 50%; transform: translateX(-50%); }
+        .tut-slider { position: absolute; bottom: 10px; left: 10%; width: 80%; height: 2px; background: #333; }
+        .tut-handle { position: absolute; bottom: -5px; left: 60%; width: 4px; height: 15px; background: var(--start-orange); }
+
+        /* End Game Message */
+        #game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 5, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 50;
+        }
+        body.light-mode #game-over-overlay { background: rgba(255, 255, 255, 0.85); }
+        #game-over-overlay.visible { opacity: 1; pointer-events: all; }
+        #result-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- START BILDSCHIRM -->
+    <div id="start-screen">
+        <div class="start-card">
+            <div class="start-header">
+                <button class="header-btn icon" id="start-theme-toggle">☀️</button>
+                <div class="lang-container">
+                    <button class="header-btn" id="start-lang-btn">EN ⌄</button>
+                    <div class="lang-dropdown" id="start-lang-dropdown">
+                        <div class="lang-option active" data-lang="en">English <span class="check">✓</span></div>
+                        <div class="lang-option" data-lang="de">Deutsch <span class="check">✓</span></div>
+                        <div class="lang-option" data-lang="es">Español <span class="check">✓</span></div>
+                        <div class="lang-option" data-lang="fr">Français <span class="check">✓</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="start-graphic">
+                <div class="bounce-lines">
+                    <div class="b-line short"></div>
+                    <div class="b-line tall"></div>
+                    <div class="b-line short"></div>
+                </div>
+                <div class="start-ball"></div>
+                <div class="start-dots">
+                    <div class="s-dot"></div>
+                    <div class="s-dot"></div>
+                    <div class="s-dot active"></div>
+                    <div class="s-dot"></div>
+                    <div class="s-dot"></div>
+                </div>
+            </div>
+
+            <h1 class="start-title">
+                <span class="title-blue">Ricochet</span> 
+                <span class="title-orange" id="t-daily">Daily</span>
+            </h1>
+
+            <div class="streak-badge">
+                <span class="num">1</span> <span id="t-streak">day streak</span>
+            </div>
+
+            <div class="start-date" id="t-date">May 2, 2026</div>
+            <div class="start-subtitle" id="t-subtitle">Predict where the bouncing ball will land</div>
+
+            <button id="play-today-btn">Play Today's Puzzle</button>
+
+            <div class="start-footer" id="t-footer">Come back tomorrow for a new challenge!</div>
+        </div>
+    </div>
+
+    <!-- EIGENTLICHES SPIEL UI -->
+    <div id="game-container">
+        
+        <div class="game-header">
+            <button class="icon-btn" id="calendar-btn">📅</button>
+            <div class="game-titles">
+                <div class="game-date-small" id="g-date-top">May 2, 2026</div>
+                <div class="game-title-main">Ricochet</div>
+            </div>
+            <button class="icon-btn" id="menu-btn">☰</button>
+        </div>
+
+        <div class="game-progress" id="progress-bar">
+            <!-- Dynamically filled: 5 circles -->
+        </div>
+
+        <div id="canvas-wrapper">
+            <div class="bounces-pill" id="bounces-display">Bounces: 2</div>
+            
+            <canvas id="gameCanvas" width="500" height="500"></canvas>
+            <canvas id="drawCanvas" width="500" height="500"></canvas>
+            
+            <div class="launch-tooltip arrow-bottom" id="tooltip-top">
+                <span id="t-tt-top">Number of times the ball bounces before landing</span>
+            </div>
+            <div class="launch-tooltip arrow-bottom" id="tooltip-mid">
+                <span id="t-tt-mid">The ball will launch in this direction</span>
+            </div>
+            <div class="launch-tooltip arrow-bottom" id="tooltip-bot">
+                <span id="t-tt-bot">Choose where you think the ball will land</span>
+            </div>
+
+            <!-- Classic Targets UI -->
+            <div class="targets-container" id="classic-ui">
+                <div class="t-btn-wrap" data-target="A"><div class="tick"></div><div class="letter">A</div></div>
+                <div class="t-btn-wrap" data-target="B"><div class="tick"></div><div class="letter">B</div></div>
+                <div class="t-btn-wrap" data-target="C"><div class="tick"></div><div class="letter">C</div></div>
+                <div class="t-btn-wrap" data-target="D"><div class="tick"></div><div class="letter">D</div></div>
+            </div>
+
+            <!-- Precision Mode UI (Slider) -->
+            <div class="precision-container" id="precision-ui">
+                <div class="slider-track" id="slider-track">
+                    <!-- Ticks gen dynamic -->
+                    <div class="slider-handle" id="slider-handle"></div>
+                </div>
+            </div>
+
+            <div id="game-over-overlay">
+                <div id="result-text"></div>
+                <button class="next-circle-btn" id="next-level-btn" style="display:flex; position:relative; bottom:0; transform:none; margin-top:20px; width:80px; height:80px;">
+                    <span id="t-next">Next</span><br><span id="level-counter" style="font-weight:normal">1/5</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="game-footer">
+            <div class="action-row">
+                <button class="undo-btn" id="undo-btn" title="Undo Line">↶</button>
+                <div class="choose-text" id="t-choose">▲ Choose</div>
+                <div style="width: 30px;"></div> <!-- Spacer -->
+            </div>
+            <button class="launch-btn-big" id="launch-btn">▶ <span id="t-launch">Launch</span></button>
+        </div>
+    </div>
+
+    <!-- SETTINGS MENU MODAL -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="t-menu">Menu</span>
+                <button class="close-btn" id="close-menu">✕</button>
+            </div>
+            
+            <div class="menu-item">
+                <div><span class="menu-icon">🌙</span> <span id="t-darkmode">Dark Mode</span></div>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-darkmode" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            
+            <div class="menu-item">
+                <div><span class="menu-icon">👁️</span> <span id="t-hardmode">Hard Mode (Hide Bounce Count)</span></div>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-hardmode">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <div class="menu-item">
+                <div><span class="menu-icon">🎯</span> <span id="t-precision">Precision Mode (Place Your Pin)</span></div>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-precision" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <div class="menu-item">
+                <div><span class="menu-icon">▦</span> <span id="t-grid">Show Grid</span></div>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-grid" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <div class="menu-item">
+                <div><span class="menu-icon">🔊</span> <span id="t-sound">Sound and Haptics</span></div>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-sound" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <div class="menu-item">
+                <div><span class="menu-icon">🌐</span> <span id="t-language">Language</span></div>
+                <select class="menu-lang-select" id="settings-lang-select">
+                    <option value="en">English</option>
+                    <option value="de">Deutsch</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                </select>
+            </div>
+
+            <button class="how-to-play-btn" id="open-tutorial">❓ <span id="t-htplay">How to Play</span></button>
+            
+            <div class="menu-footer" id="t-faq">Frequently Asked Questions</div>
+        </div>
+    </div>
+
+    <!-- HOW TO PLAY MODAL -->
+    <div class="modal-overlay" id="tutorial-modal">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-header">
+                <span id="t-tut-header">How to Play</span>
+                <button class="close-btn" id="close-tutorial">✕</button>
+            </div>
+            
+            <div class="tutorial-img-container" id="tut-img">
+                <!-- Visuals generated by JS based on step -->
+            </div>
+
+            <div class="tut-dots">
+                <div class="tut-dot active" id="dot1"></div>
+                <div class="tut-dot" id="dot2"></div>
+                <div class="tut-dot" id="dot3"></div>
+            </div>
+
+            <div class="tut-title" id="tut-title">Step 1: Visualize the Path</div>
+            <div class="tut-desc" id="tut-desc">Predict the path using the launch arrow, bounce count and drawing tool.</div>
+
+            <div class="tut-actions">
+                <button class="tut-btn tut-btn-prev" id="tut-prev">Previous</button>
+                <button class="tut-btn tut-btn-next" id="tut-next">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Umfassendes und komplexes Ricochet Klon Spiel.
+         * Beinhaltet: Precision Mode, Freies Linienzeichnen, 5 Level System,
+         * Modals für Settings & Tutorial, und mehr.
+         */
+
+        // --- TRANSLATIONS ---
+        const translations = {
+            en: {
+                langCode: "EN", daily: "Daily", streak: "day streak", date: "May 2, 2026",
+                subtitle: "Predict where the bouncing ball will land", playBtn: "Play Today's Puzzle",
+                footer: "Come back tomorrow for a new challenge!", bounces: "Bounces",
+                ttTop: "Number of times the ball bounces before landing",
+                ttMid: "The ball will launch in this direction",
+                ttBot: "Choose where you think the ball will land",
+                next: "Next", choose: "Choose", launch: "Launch",
+                menu: "Menu", darkmode: "Dark Mode", hardmode: "Hard Mode (Hide Bounce Count)",
+                precision: "Precision Mode (Place Your Pin)", grid: "Show Grid",
+                sound: "Sound and Haptics", language: "Language", htplay: "How to Play", faq: "Frequently Asked Questions",
+                tutHeader: "How to Play", prev: "Previous", startPlay: "Start Playing",
+                tut1Title: "Step 1: Visualize the Path", tut1Desc: "Predict the path using the launch arrow, bounce count and drawing tool.",
+                tut2Title: "Step 2: Use the Slider", tut2Desc: "Slide to where you think the ball will land.",
+                tut3Title: "Step 3: Launch the Ball", tut3Desc: "Hit Launch to see the actual path — and how close your prediction was.",
+                correct: "Spot On! 🎉", wrong: "Missed! 💀", close: "Close"
+            },
+            de: {
+                langCode: "DE", daily: "Täglich", streak: "Tage in Folge", date: "2. Mai 2026",
+                subtitle: "Sagt voraus, wo der Ball landen wird", playBtn: "Heutiges Rätsel spielen",
+                footer: "Komm morgen für eine neue Herausforderung zurück!", bounces: "Sprünge",
+                ttTop: "Anzahl der Sprünge bevor der Ball landet",
+                ttMid: "Der Ball wird in diese Richtung abgeschossen",
+                ttBot: "Wähle, wo du denkst, dass der Ball landen wird",
+                next: "Weiter", choose: "Wählen", launch: "Starten",
+                menu: "Menü", darkmode: "Dunkler Modus", hardmode: "Schwer (Sprünge ausblenden)",
+                precision: "Präzisionsmodus (Pin setzen)", grid: "Raster anzeigen",
+                sound: "Ton und Haptik", language: "Sprache", htplay: "Spielanleitung", faq: "Häufig gestellte Fragen",
+                tutHeader: "Spielanleitung", prev: "Zurück", startPlay: "Losspielen",
+                tut1Title: "Schritt 1: Pfad visualisieren", tut1Desc: "Sage den Pfad voraus mit dem Pfeil, der Sprungzahl und dem Zeichen-Tool.",
+                tut2Title: "Schritt 2: Schieberegler", tut2Desc: "Schiebe den Regler dorthin, wo der Ball landen wird.",
+                tut3Title: "Schritt 3: Ball abfeuern", tut3Desc: "Drücke Starten, um den echten Pfad zu sehen — und wie gut du warst.",
+                correct: "Volltreffer! 🎉", wrong: "Daneben! 💀", close: "Schließen"
+            },
+            es: {
+                langCode: "ES", daily: "Diario", streak: "días seguidos", date: "2 de Mayo 2026",
+                subtitle: "Predice dónde aterrizará la pelota", playBtn: "Jugar Rompecabezas de Hoy",
+                footer: "¡Vuelve mañana para un nuevo desafío!", bounces: "Rebotes",
+                ttTop: "Número de veces que rebota la bola",
+                ttMid: "La bola se lanzará en esta dirección",
+                ttBot: "Elige dónde crees que aterrizará",
+                next: "Sig.", choose: "Elegir", launch: "Lanzar",
+                menu: "Menú", darkmode: "Modo Oscuro", hardmode: "Modo Difícil",
+                precision: "Modo Precisión", grid: "Mostrar Cuadrícula",
+                sound: "Sonido y Háptica", language: "Idioma", htplay: "Cómo Jugar", faq: "Preguntas Frecuentes",
+                tutHeader: "Cómo Jugar", prev: "Anterior", startPlay: "Empezar a Jugar",
+                tut1Title: "Paso 1: Visualiza la ruta", tut1Desc: "Predice la ruta usando la flecha, recuento y dibujo.",
+                tut2Title: "Paso 2: Usa el deslizador", tut2Desc: "Desliza a donde crees que aterrizará.",
+                tut3Title: "Paso 3: Lanza la bola", tut3Desc: "Presiona Lanzar para ver la ruta real.",
+                correct: "¡Exacto! 🎉", wrong: "¡Fallaste! 💀", close: "Cerrar"
+            },
+            fr: {
+                langCode: "FR", daily: "Quotidien", streak: "jours de suite", date: "2 Mai 2026",
+                subtitle: "Prédisez où la balle va atterrir", playBtn: "Jouer au Puzzle du Jour",
+                footer: "Revenez demain pour un nouveau défi !", bounces: "Rebonds",
+                ttTop: "Nombre de rebonds avant l'atterrissage",
+                ttMid: "La balle sera lancée dans cette direction",
+                ttBot: "Choisissez où vous pensez qu'elle va atterrir",
+                next: "Suivant", choose: "Choisir", launch: "Lancer",
+                menu: "Menu", darkmode: "Mode Sombre", hardmode: "Mode Difficile",
+                precision: "Mode Précision", grid: "Afficher la Grille",
+                sound: "Son et Haptique", language: "Langue", htplay: "Comment Jouer", faq: "Questions Fréquentes",
+                tutHeader: "Comment Jouer", prev: "Précédent", startPlay: "Commencer à Jouer",
+                tut1Title: "Étape 1: Visualisez", tut1Desc: "Prédisez le chemin à l'aide de la flèche et du dessin.",
+                tut2Title: "Étape 2: Glissez", tut2Desc: "Faites glisser où vous pensez qu'elle atterrira.",
+                tut3Title: "Étape 3: Lancez", tut3Desc: "Appuyez sur Lancer pour voir le vrai chemin.",
+                correct: "Dans le mille ! 🎉", wrong: "Raté ! 💀", close: "Fermer"
+            }
+        };
+
+        let currentLang = 'en';
+
+        // --- HILFSKLASSEN & MATHEMATIK ---
+        class Vector2D {
+            constructor(x, y) { this.x = x; this.y = y; }
+            add(v) { return new Vector2D(this.x + v.x, this.y + v.y); }
+            sub(v) { return new Vector2D(this.x - v.x, this.y - v.y); }
+            mult(n) { return new Vector2D(this.x * n, this.y * n); }
+            magSq() { return this.x * this.x + this.y * this.y; }
+            mag() { return Math.sqrt(this.magSq()); }
+            normalize() {
+                let m = this.mag();
+                if (m !== 0) return new Vector2D(this.x / m, this.y / m);
+                return new Vector2D(0, 0);
+            }
+            copy() { return new Vector2D(this.x, this.y); }
+            dist(v) { return Math.sqrt(Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2)); }
+        }
+
+        class AudioEngine {
+            constructor() { this.initialized = false; this.ctx = null; this.enabled = true; }
+            init() {
+                if (this.initialized) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                this.initialized = true;
+            }
+            playBounce() {
+                if (!this.initialized || this.ctx.state === 'suspended' || !this.enabled) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+            }
+            playWin() {
+                if (!this.initialized || this.ctx.state === 'suspended' || !this.enabled) return;
+                this._playTone(440, 0, 0.1, 'sine');
+                this._playTone(554, 0.1, 0.1, 'sine');
+                this._playTone(659, 0.2, 0.3, 'sine');
+            }
+            playLose() {
+                if (!this.initialized || this.ctx.state === 'suspended' || !this.enabled) return;
+                this._playTone(300, 0, 0.2, 'sawtooth');
+                this._playTone(250, 0.2, 0.4, 'sawtooth');
+            }
+            _playTone(freq, delay, duration, type) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type; osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + delay + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(this.ctx.currentTime + delay); osc.stop(this.ctx.currentTime + delay + duration);
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.pos = new Vector2D(x, y);
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                this.vel = new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed);
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.015;
+                this.color = color;
+                this.size = Math.random() * 4 + 2;
+            }
+            update() { this.pos = this.pos.add(this.vel); this.life -= this.decay; }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.size, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        const GRID_SIZE = 10;
+        const CELL_SIZE = 50; 
+
+        class Block {
+            constructor(gridX, gridY, type) { this.gridX = gridX; this.gridY = gridY; this.type = type; this.label = ""; }
+        }
+
+        class Ball {
+            constructor(startX, startY, dirX, dirY) {
+                this.pos = new Vector2D(startX, startY);
+                this.vel = new Vector2D(0, 0); 
+                this.startDir = new Vector2D(dirX, dirY).normalize();
+                this.radius = CELL_SIZE * 0.35;
+                this.speed = 12; // Etwas schneller
+                this.path = [];
+                this.bounces = 0;
+                this.active = false;
+            }
+            launch() {
+                this.vel = this.startDir.mult(this.speed);
+                this.active = true;
+                this.path.push(this.pos.copy());
+            }
+            update(grid, width, height, onBounce, onEnd) {
+                if (!this.active) return;
+                let nextPos = this.pos.add(this.vel);
+                let bounced = false;
+
+                let minCol = Math.floor((nextPos.x - this.radius) / CELL_SIZE);
+                let maxCol = Math.floor((nextPos.x + this.radius) / CELL_SIZE);
+                let minRow = Math.floor((nextPos.y - this.radius) / CELL_SIZE);
+                let maxRow = Math.floor((nextPos.y + this.radius) / CELL_SIZE);
+
+                minCol = Math.max(0, minCol); maxCol = Math.min(GRID_SIZE - 1, maxCol);
+                minRow = Math.max(0, minRow); maxRow = Math.min(GRID_SIZE - 1, maxRow);
+
+                let hitBlock = null;
+                let hitNormal = new Vector2D(0, 0);
+
+                for (let c = minCol; c <= maxCol; c++) {
+                    for (let r = minRow; r <= maxRow; r++) {
+                        let block = grid[c][r];
+                        if (block.type === 'obstacle') {
+                            let blockRect = { x: c * CELL_SIZE, y: r * CELL_SIZE, w: CELL_SIZE, h: CELL_SIZE };
+                            let testX = nextPos.x; let testY = nextPos.y;
+                            if (nextPos.x < blockRect.x) testX = blockRect.x;
+                            else if (nextPos.x > blockRect.x + blockRect.w) testX = blockRect.x + blockRect.w;
+                            if (nextPos.y < blockRect.y) testY = blockRect.y;
+                            else if (nextPos.y > blockRect.y + blockRect.h) testY = blockRect.y + blockRect.h;
+
+                            let distX = nextPos.x - testX; let distY = nextPos.y - testY;
+                            let distance = Math.sqrt((distX*distX) + (distY*distY));
+
+                            if (distance <= this.radius) {
+                                hitBlock = block;
+                                if (Math.abs(distX) > Math.abs(distY)) {
+                                    hitNormal = new Vector2D(Math.sign(distX), 0);
+                                    if(hitNormal.x === 0) hitNormal.x = this.vel.x > 0 ? -1 : 1;
+                                } else {
+                                    hitNormal = new Vector2D(0, Math.sign(distY));
+                                    if(hitNormal.y === 0) hitNormal.y = this.vel.y > 0 ? -1 : 1;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (hitBlock) {
+                    if (hitNormal.x !== 0) { this.vel.x *= -1; nextPos.x = this.pos.x + this.vel.x; }
+                    if (hitNormal.y !== 0) { this.vel.y *= -1; nextPos.y = this.pos.y + this.vel.y; }
+                    this.bounces++; bounced = true;
+                    onBounce(this.pos.x, this.pos.y);
+                }
+
+                // Check bounds (end condition at bottom)
+                if (nextPos.y + this.radius > height) {
+                    this.active = false;
+                    this.pos = nextPos;
+                    onEnd(this.pos.x);
+                    return;
+                }
+
+                if (nextPos.x - this.radius < 0 || nextPos.x + this.radius > width) {
+                    this.vel.x *= -1; nextPos.x = this.pos.x + this.vel.x; bounced = true;
+                }
+                if (nextPos.y - this.radius < 0) {
+                    this.vel.y *= -1; nextPos.y = this.pos.y + this.vel.y; bounced = true;
+                }
+
+                if (bounced) { this.path.push(this.pos.copy()); }
+                this.pos = nextPos;
+            }
+
+            draw(ctx) {
+                if (this.path.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.path[0].x, this.path[0].y);
+                    for (let i = 1; i < this.path.length; i++) { ctx.lineTo(this.path[i].x, this.path[i].y); }
+                    ctx.lineTo(this.pos.x, this.pos.y);
+                    ctx.strokeStyle = "rgba(59, 130, 246, 0.4)"; ctx.lineWidth = 4; ctx.stroke();
+                }
+
+                if (!this.active && this.vel.magSq() === 0) {
+                    // Highlight Start Area
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+                    ctx.beginPath();
+                    ctx.roundRect(this.pos.x - CELL_SIZE*1.5, this.pos.y - CELL_SIZE*1.5, CELL_SIZE*3, CELL_SIZE*3, 15);
+                    ctx.fill();
+
+                    let arrowLength = 50;
+                    let endX = this.pos.x + this.startDir.x * arrowLength;
+                    let endY = this.pos.y + this.startDir.y * arrowLength;
+                    
+                    ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(endX, endY);
+                    ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 4; ctx.stroke();
+
+                    ctx.beginPath();
+                    let angle = Math.atan2(this.startDir.y, this.startDir.x);
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - 15 * Math.cos(angle - Math.PI / 4), endY - 15 * Math.sin(angle - Math.PI / 4));
+                    ctx.lineTo(endX - 15 * Math.cos(angle + Math.PI / 4), endY - 15 * Math.sin(angle + Math.PI / 4));
+                    ctx.fillStyle = "#e2e8f0"; ctx.fill();
+                }
+
+                ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = "#5b9cf6"; ctx.fill();
+            }
+        }
+
+        // --- HAUPTSPIEL ENGINE ---
+        class GameEngine {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.drawCanvas = document.getElementById('drawCanvas');
+                this.drawCtx = this.drawCanvas.getContext('2d');
+
+                this.audio = new AudioEngine();
+                
+                this.particles = [];
+                this.grid = [];
+                this.ball = null;
+                this.hatchPattern = null;
+                
+                // Game State
+                this.state = 'IDLE'; 
+                this.currentLevel = 1;
+                this.maxLevels = 5;
+                this.targetBounces = 0;
+                
+                // Settings
+                this.settings = {
+                    darkMode: true,
+                    hardMode: false,
+                    precisionMode: true,
+                    showGrid: true,
+                    sound: true
+                };
+
+                // Precision State
+                this.sliderValue = 250; // Middle of 500
+                
+                // Drawing State
+                this.drawnLines = []; // Array of Arrays [{x,y}, ...]
+                this.currentLine = [];
+                this.isDrawing = false;
+
+                this.initUIElements();
+                this.bindEvents();
+                this.resizeCanvas();
+                this.generateHatchPattern();
+                this.updateProgressBar();
+                this.generateLevel();
+                
+                window.currentGameEngine = this;
+                requestAnimationFrame((t) => this.loop(t));
+                
+                // Initial Tooltips logic
+                setTimeout(() => this.showTooltipsSequence(), 1000);
+            }
+
+            initUIElements() {
+                this.bouncesDisplay = document.getElementById('bounces-display');
+                this.overlay = document.getElementById('game-over-overlay');
+                this.resultText = document.getElementById('result-text');
+                this.nextLevelBtn = document.getElementById('next-level-btn');
+                
+                this.tooltips = {
+                    top: document.getElementById('tooltip-top'),
+                    mid: document.getElementById('tooltip-mid'),
+                    bot: document.getElementById('tooltip-bot')
+                };
+
+                this.sliderTrack = document.getElementById('slider-track');
+                this.sliderHandle = document.getElementById('slider-handle');
+                this.launchBtn = document.getElementById('launch-btn');
+                this.undoBtn = document.getElementById('undo-btn');
+                
+                this.classicUI = document.getElementById('classic-ui');
+                this.precisionUI = document.getElementById('precision-ui');
+                this.classicBtns = document.querySelectorAll('.t-btn-wrap');
+                
+                // Modals
+                this.settingsModal = document.getElementById('settings-modal');
+                this.tutorialModal = document.getElementById('tutorial-modal');
+            }
+
+            generateHatchPattern() {
+                let pCanvas = document.createElement('canvas');
+                pCanvas.width = 12; pCanvas.height = 12;
+                let pCtx = pCanvas.getContext('2d');
+                pCtx.strokeStyle = this.settings.darkMode ? 'rgba(156, 75, 21, 0.4)' : 'rgba(217, 119, 6, 0.4)';
+                pCtx.lineWidth = 1; pCtx.beginPath(); pCtx.moveTo(0, 12); pCtx.lineTo(12, 0); pCtx.stroke();
+                this.hatchPattern = this.ctx.createPattern(pCanvas, 'repeat');
+            }
+
+            resizeCanvas() {
+                this.canvas.width = 500; this.canvas.height = 500;
+                this.drawCanvas.width = 500; this.drawCanvas.height = 500;
+                this.generateSliderTicks();
+            }
+
+            generateSliderTicks() {
+                this.sliderTrack.innerHTML = '';
+                for(let i=0; i<=20; i++) {
+                    let tick = document.createElement('div');
+                    tick.className = 'tick-mark' + (i%5===0 ? ' major' : '');
+                    this.sliderTrack.appendChild(tick);
+                }
+                this.sliderTrack.appendChild(this.sliderHandle);
+            }
+
+            bindEvents() {
+                // UI & Menus
+                document.getElementById('menu-btn').addEventListener('click', () => this.settingsModal.classList.add('active'));
+                document.getElementById('close-menu').addEventListener('click', () => this.settingsModal.classList.remove('active'));
+                
+                document.getElementById('open-tutorial').addEventListener('click', () => {
+                    this.settingsModal.classList.remove('active');
+                    this.openTutorial();
+                });
+                document.getElementById('close-tutorial').addEventListener('click', () => this.tutorialModal.classList.remove('active'));
+
+                // Toggles
+                document.getElementById('toggle-darkmode').addEventListener('change', (e) => {
+                    this.settings.darkMode = e.target.checked;
+                    if(this.settings.darkMode) document.body.classList.remove('light-mode');
+                    else document.body.classList.add('light-mode');
+                    this.generateHatchPattern();
+                });
+                
+                document.getElementById('toggle-hardmode').addEventListener('change', (e) => {
+                    this.settings.hardMode = e.target.checked;
+                    this.bouncesDisplay.style.display = this.settings.hardMode ? 'none' : 'block';
+                });
+
+                document.getElementById('toggle-precision').addEventListener('change', (e) => {
+                    this.settings.precisionMode = e.target.checked;
+                    this.applyModeUI();
+                });
+
+                document.getElementById('toggle-grid').addEventListener('change', (e) => {
+                    this.settings.showGrid = e.target.checked;
+                });
+
+                document.getElementById('toggle-sound').addEventListener('change', (e) => {
+                    this.settings.sound = e.target.checked;
+                    this.audio.enabled = this.settings.sound;
+                });
+
+                // Language
+                const ls = document.getElementById('settings-lang-select');
+                ls.addEventListener('change', (e) => setLanguage(e.target.value));
+
+                // Slider Drag Logic
+                let isDragging = false;
+                const updateSlider = (clientX) => {
+                    const rect = this.sliderTrack.getBoundingClientRect();
+                    let x = clientX - rect.left;
+                    x = Math.max(0, Math.min(x, rect.width));
+                    let percentage = x / rect.width;
+                    this.sliderHandle.style.left = `${percentage * 100}%`;
+                    this.sliderValue = percentage * 500; // Map to canvas width
+                };
+
+                this.sliderHandle.addEventListener('mousedown', () => isDragging = true);
+                window.addEventListener('mousemove', (e) => { if(isDragging) updateSlider(e.clientX); });
+                window.addEventListener('mouseup', () => isDragging = false);
+                
+                this.sliderHandle.addEventListener('touchstart', () => isDragging = true);
+                window.addEventListener('touchmove', (e) => { if(isDragging) updateSlider(e.touches[0].clientX); }, {passive: false});
+                window.addEventListener('touchend', () => isDragging = false);
+
+                // Launch Button
+                this.launchBtn.addEventListener('click', () => {
+                    if (this.state === 'IDLE') { this.audio.init(); this.startGame(); }
+                });
+
+                // Classic Mode Buttons
+                this.classicBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        if (this.state !== 'IDLE') return;
+                        this.audio.init();
+                        // Map A,B,C,D to roughly X positions
+                        const maps = {'A': 125, 'B': 208, 'C': 291, 'D': 375}; // Based on CSS layout roughly
+                        this.sliderValue = maps[e.currentTarget.getAttribute('data-target')];
+                        this.startGame();
+                    });
+                });
+
+                // Next Level
+                this.nextLevelBtn.addEventListener('click', () => {
+                    if (this.currentLevel < this.maxLevels) {
+                        this.currentLevel++;
+                        this.overlay.classList.remove('visible');
+                        this.generateLevel();
+                    } else {
+                        alert("Daily Complete! Come back tomorrow."); // Simple end state
+                    }
+                });
+
+                // --- DRAWING LOGIC ---
+                const getCanvasPos = (e) => {
+                    const rect = this.drawCanvas.getBoundingClientRect();
+                    const scaleX = this.drawCanvas.width / rect.width;
+                    const scaleY = this.drawCanvas.height / rect.height;
+                    let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    return new Vector2D((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
+                };
+
+                this.drawCanvas.addEventListener('mousedown', (e) => {
+                    if(this.state !== 'IDLE') return;
+                    this.isDrawing = true;
+                    this.currentLine = [getCanvasPos(e)];
+                });
+                this.drawCanvas.addEventListener('mousemove', (e) => {
+                    if(this.isDrawing && this.state === 'IDLE') {
+                        this.currentLine.push(getCanvasPos(e));
+                    }
+                });
+                this.drawCanvas.addEventListener('mouseup', () => {
+                    if(this.isDrawing) {
+                        this.isDrawing = false;
+                        if(this.currentLine.length > 1) this.drawnLines.push([...this.currentLine]);
+                        this.currentLine = [];
+                    }
+                });
+                this.drawCanvas.addEventListener('mouseleave', () => this.isDrawing = false);
+
+                // Touch support drawing
+                this.drawCanvas.addEventListener('touchstart', (e) => {
+                    if(this.state !== 'IDLE') return;
+                    e.preventDefault();
+                    this.isDrawing = true;
+                    this.currentLine = [getCanvasPos(e)];
+                }, {passive: false});
+                this.drawCanvas.addEventListener('touchmove', (e) => {
+                    if(this.isDrawing && this.state === 'IDLE') {
+                        e.preventDefault();
+                        this.currentLine.push(getCanvasPos(e));
+                    }
+                }, {passive: false});
+                this.drawCanvas.addEventListener('touchend', () => {
+                    if(this.isDrawing) {
+                        this.isDrawing = false;
+                        if(this.currentLine.length > 1) this.drawnLines.push([...this.currentLine]);
+                        this.currentLine = [];
+                    }
+                });
+
+                // Undo Line
+                this.undoBtn.addEventListener('click', () => {
+                    if(this.drawnLines.length > 0 && this.state === 'IDLE') {
+                        this.drawnLines.pop();
+                    }
+                });
+
+                // Tutorial Logic
+                let tutStep = 1;
+                const updateTut = () => {
+                    const t = translations[currentLang];
+                    document.getElementById('tut-title').innerText = tutStep === 1 ? t.tut1Title : (tutStep === 2 ? t.tut2Title : t.tut3Title);
+                    document.getElementById('tut-desc').innerText = tutStep === 1 ? t.tut1Desc : (tutStep === 2 ? t.tut2Desc : t.tut3Desc);
+                    
+                    document.getElementById('dot1').className = tutStep === 1 ? 'tut-dot active' : 'tut-dot';
+                    document.getElementById('dot2').className = tutStep === 2 ? 'tut-dot active' : 'tut-dot';
+                    document.getElementById('dot3').className = tutStep === 3 ? 'tut-dot active' : 'tut-dot';
+                    
+                    document.getElementById('tut-prev').style.visibility = tutStep === 1 ? 'hidden' : 'visible';
+                    document.getElementById('tut-next').innerText = tutStep === 3 ? t.startPlay : t.next;
+
+                    // Mockup Visuals Update
+                    const imgContainer = document.getElementById('tut-img');
+                    imgContainer.innerHTML = '';
+                    if(tutStep === 1) {
+                        imgContainer.innerHTML = '<div class="tut-mockup"><div class="tut-obs"></div><div class="tut-line"></div><div class="tut-ball"></div><div style="position:absolute; top:10px; left:10px; background:#222; border:1px solid #444; padding:2px 6px; border-radius:6px; font-size:0.7rem; color:#fff;">Bounces: 1</div></div>';
+                    } else if (tutStep === 2) {
+                        imgContainer.innerHTML = '<div class="tut-mockup"><div class="tut-obs"></div><div class="tut-line"></div><div class="tut-ball"></div><div class="tut-slider"><div class="tut-handle"></div></div></div>';
+                    } else {
+                        imgContainer.innerHTML = '<div class="tut-mockup"><div class="tut-obs"></div><div class="tut-line" style="width:100px; border-top:2px solid var(--start-blue);"></div><div class="tut-ball" style="bottom:60px; left:45%"></div><div class="tut-slider"><div class="tut-handle"></div></div></div>';
+                    }
+                };
+
+                document.getElementById('tut-prev').addEventListener('click', () => { if(tutStep > 1) { tutStep--; updateTut(); } });
+                document.getElementById('tut-next').addEventListener('click', () => { 
+                    if(tutStep < 3) { tutStep++; updateTut(); }
+                    else this.tutorialModal.classList.remove('active');
+                });
+                this.updateTutContent = () => { tutStep = 1; updateTut(); };
+            }
+
+            openTutorial() {
+                this.updateTutContent();
+                this.tutorialModal.classList.add('active');
+            }
+
+            applyModeUI() {
+                if(this.settings.precisionMode) {
+                    this.classicUI.style.display = 'none';
+                    this.precisionUI.style.display = 'flex';
+                    this.launchBtn.style.display = 'flex';
+                    this.tooltips.bot.querySelector('span').innerText = "Slide to where you think the ball will land";
+                } else {
+                    this.classicUI.style.display = 'flex';
+                    this.precisionUI.style.display = 'none';
+                    this.launchBtn.style.display = 'none';
+                    this.tooltips.bot.querySelector('span').innerText = translations[currentLang].ttBot;
+                }
+            }
+
+            updateProgressBar() {
+                const pb = document.getElementById('progress-bar');
+                pb.innerHTML = '';
+                for(let i=1; i<=this.maxLevels; i++) {
+                    let circle = document.createElement('div');
+                    circle.className = 'prog-circle' + (i === this.currentLevel ? ' active' : (i > this.currentLevel ? ' locked' : ''));
+                    circle.innerText = i > this.currentLevel ? '🔒' : (i < this.currentLevel ? '✓' : i);
+                    pb.appendChild(circle);
+                    if(i < this.maxLevels) {
+                        let line = document.createElement('div');
+                        line.className = 'prog-line';
+                        if(i < this.currentLevel) line.style.backgroundColor = 'var(--start-blue)';
+                        pb.appendChild(line);
+                    }
+                }
+                document.getElementById('level-counter').innerText = `${this.currentLevel}/${this.maxLevels}`;
+            }
+
+            generateLevel() {
+                this.state = 'IDLE';
+                this.particles = [];
+                this.drawnLines = [];
+                this.currentLine = [];
+                this.applyModeUI();
+                this.updateProgressBar();
+                
+                this.launchBtn.disabled = false;
+                this.undoBtn.style.opacity = '1';
+
+                this.grid = [];
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    this.grid[x] = [];
+                    for (let y = 0; y < GRID_SIZE; y++) {
+                        this.grid[x][y] = new Block(x, y, 'empty');
+                    }
+                }
+
+                // Inner Obstacles (Increase difficulty slightly per level)
+                let numObstacles = 4 + this.currentLevel;
+                for (let i = 0; i < numObstacles; i++) {
+                    let ox = Math.floor(Math.random() * (GRID_SIZE - 2)) + 1;
+                    let oy = Math.floor(Math.random() * (GRID_SIZE - 4)) + 2;
+                    this.grid[ox][oy].type = 'obstacle';
+                }
+
+                // Find valid start and simulate to find target bounces
+                let startX = Math.floor(Math.random() * 6) + 2;
+                let startY = GRID_SIZE - 2;
+                let dirX = Math.random() > 0.5 ? 1 : -1;
+                let dirY = -1;
+
+                this.grid[startX][startY].type = 'empty';
+
+                // Sim Ball to find target
+                let simBall = new Ball(startX * CELL_SIZE + CELL_SIZE/2, startY * CELL_SIZE + CELL_SIZE/2, dirX, dirY);
+                simBall.speed = CELL_SIZE/2;
+                simBall.active = true;
+                
+                let simBounces = 0;
+                let safeCounter = 0;
+                while(simBall.active && safeCounter < 200) {
+                    simBall.update(this.grid, this.canvas.width, this.canvas.height, 
+                        () => simBounces++, 
+                        () => {}
+                    );
+                    safeCounter++;
+                }
+
+                this.targetBounces = simBounces;
+                this.bouncesDisplay.innerText = `${translations[currentLang].bounces}: ${this.targetBounces}`;
+
+                this.ball = new Ball(
+                    startX * CELL_SIZE + CELL_SIZE/2, 
+                    startY * CELL_SIZE + CELL_SIZE/2, 
+                    dirX, 
+                    dirY
+                );
+
+                this.positionTooltips();
+            }
+
+            positionTooltips() {
+                if(!this.ball) return;
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = rect.width / this.canvas.width;
+                const scaleY = rect.height / this.canvas.height;
+                
+                // Top Tooltip (Bounces Pill)
+                const pillRect = this.bouncesDisplay.getBoundingClientRect();
+                this.tooltips.top.style.left = `${pillRect.left + pillRect.width/2}px`;
+                this.tooltips.top.style.top = `${pillRect.top - 60}px`;
+
+                // Mid Tooltip (Ball)
+                const ballScreenX = rect.left + (this.ball.pos.x * scaleX);
+                const ballScreenY = rect.top + (this.ball.pos.y * scaleY);
+                this.tooltips.mid.style.left = `${ballScreenX}px`;
+                this.tooltips.mid.style.top = `${ballScreenY - 40}px`;
+
+                // Bot Tooltip (Slider/Buttons)
+                let botTarget;
+                if(this.settings.precisionMode) botTarget = this.sliderTrack;
+                else botTarget = this.classicUI;
+                
+                const botRect = botTarget.getBoundingClientRect();
+                this.tooltips.bot.classList.remove('arrow-bottom');
+                this.tooltips.bot.classList.add('arrow-top');
+                this.tooltips.bot.style.left = `${botRect.left + botRect.width/2}px`;
+                this.tooltips.bot.style.top = `${botRect.top + 40}px`;
+            }
+
+            showTooltipsSequence() {
+                if(this.currentLevel > 1) return; // Only show on level 1
+                
+                const hideAll = () => {
+                    this.tooltips.top.style.opacity = '0';
+                    this.tooltips.mid.style.opacity = '0';
+                    this.tooltips.bot.style.opacity = '0';
+                };
+
+                hideAll();
+                this.tooltips.mid.style.opacity = '1'; // Show ball arrow first
+                
+                setTimeout(() => {
+                    hideAll();
+                    this.tooltips.top.style.opacity = '1'; // Show bounces
+                    
+                    setTimeout(() => {
+                        hideAll();
+                        this.tooltips.bot.style.opacity = '1'; // Show slider
+                        
+                        setTimeout(() => {
+                            hideAll(); // All gone
+                        }, 3000);
+                    }, 2500);
+                }, 2500);
+            }
+
+            startGame() {
+                this.state = 'PLAYING';
+                this.tooltips.top.style.opacity = '0';
+                this.tooltips.mid.style.opacity = '0';
+                this.tooltips.bot.style.opacity = '0';
+                this.launchBtn.disabled = true;
+                this.undoBtn.style.opacity = '0.5';
+                
+                // Clear drawings when launching
+                this.drawnLines = [];
+                
+                this.ball.launch();
+            }
+
+            createExplosion(x, y, color) {
+                for (let i = 0; i < 40; i++) this.particles.push(new Particle(x, y, color));
+            }
+
+            handleEnd(finalX) {
+                this.state = 'GAME_OVER';
+                
+                // Evaluate Precision
+                let distance = Math.abs(finalX - this.sliderValue);
+                let tolerance = CELL_SIZE * 1.5; // Wie nah muss man dran sein?
+                let won = distance <= tolerance;
+                
+                let resultColor = won ? "var(--success-color)" : "var(--danger-color)";
+                this.createExplosion(finalX, this.canvas.height, resultColor);
+
+                const t = translations[currentLang];
+                if (won) {
+                    this.audio.playWin();
+                    this.resultText.innerText = t.correct;
+                    this.resultText.style.color = resultColor;
+                } else {
+                    this.audio.playLose();
+                    this.resultText.innerText = t.wrong;
+                    this.resultText.style.color = resultColor;
+                }
+
+                setTimeout(() => { this.overlay.classList.add('visible'); }, 1500);
+            }
+
+            drawEnvironment() {
+                let isLight = document.body.classList.contains('light-mode');
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                if (this.settings.showGrid) {
+                    this.ctx.fillStyle = isLight ? "#ccc" : "#222";
+                    for (let x = CELL_SIZE/2; x < this.canvas.width; x += CELL_SIZE) {
+                        for (let y = CELL_SIZE/2; y < this.canvas.height; y += CELL_SIZE) {
+                            this.ctx.beginPath(); this.ctx.arc(x, y, 2, 0, Math.PI * 2); this.ctx.fill();
+                        }
+                    }
+                }
+
+                // Obstacles
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    for (let y = 0; y < GRID_SIZE; y++) {
+                        let block = this.grid[x][y];
+                        if (block.type === 'obstacle') {
+                            let px = x * CELL_SIZE; let py = y * CELL_SIZE;
+                            let cx = px + CELL_SIZE/2; let cy = py + CELL_SIZE/2;
+
+                            this.ctx.save();
+                            this.ctx.translate(cx, cy);
+                            this.ctx.rotate((x * y) * 0.1); 
+                            
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(-CELL_SIZE*0.4, -CELL_SIZE*0.4);
+                            this.ctx.lineTo(CELL_SIZE*0.5, -CELL_SIZE*0.3);
+                            this.ctx.lineTo(CELL_SIZE*0.4, CELL_SIZE*0.4);
+                            this.ctx.lineTo(-CELL_SIZE*0.5, CELL_SIZE*0.5);
+                            this.ctx.closePath();
+
+                            this.ctx.fillStyle = this.hatchPattern; this.ctx.fill();
+                            this.ctx.strokeStyle = isLight ? "#d97706" : "#9c4b15";
+                            this.ctx.lineWidth = 2; this.ctx.stroke();
+                            
+                            this.ctx.restore();
+                        }
+                    }
+                }
+            }
+
+            drawUserLines() {
+                this.drawCtx.clearRect(0, 0, this.drawCanvas.width, this.drawCanvas.height);
+                
+                this.drawCtx.strokeStyle = "rgba(91, 156, 246, 0.8)";
+                this.drawCtx.lineWidth = 3;
+                this.drawCtx.setLineDash([8, 8]);
+                this.drawCtx.lineCap = "round";
+                this.drawCtx.lineJoin = "round";
+
+                // Draw saved lines
+                this.drawnLines.forEach(line => {
+                    if(line.length < 2) return;
+                    this.drawCtx.beginPath();
+                    this.drawCtx.moveTo(line[0].x, line[0].y);
+                    for(let i=1; i<line.length; i++) this.drawCtx.lineTo(line[i].x, line[i].y);
+                    this.drawCtx.stroke();
+                });
+
+                // Draw current line
+                if(this.isDrawing && this.currentLine.length > 1) {
+                    this.drawCtx.beginPath();
+                    this.drawCtx.moveTo(this.currentLine[0].x, this.currentLine[0].y);
+                    for(let i=1; i<this.currentLine.length; i++) this.drawCtx.lineTo(this.currentLine[i].x, this.currentLine[i].y);
+                    this.drawCtx.stroke();
+                }
+
+                this.drawCtx.setLineDash([]); // Reset
+            }
+
+            update() {
+                if (this.state === 'PLAYING' && this.ball) {
+                    this.ball.update(
+                        this.grid, this.canvas.width, this.canvas.height,
+                        (x, y) => { this.audio.playBounce(); for(let i=0; i<5; i++) this.particles.push(new Particle(x, y, "#94a3b8")); },
+                        (finalX) => this.handleEnd(finalX)
+                    );
+                }
+
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    this.particles[i].update();
+                    if (this.particles[i].life <= 0) this.particles.splice(i, 1);
+                }
+            }
+
+            draw() {
+                this.drawEnvironment();
+                
+                // Draw target indicator line if in precision mode
+                if (this.settings.precisionMode && this.state !== 'GAME_OVER') {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.sliderValue, this.canvas.height);
+                    this.ctx.lineTo(this.sliderValue, this.canvas.height - 20);
+                    this.ctx.strokeStyle = "rgba(249, 138, 75, 0.5)";
+                    this.ctx.lineWidth = 4;
+                    this.ctx.stroke();
+                }
+
+                if (this.ball) this.ball.draw(this.ctx);
+                this.particles.forEach(p => p.draw(this.ctx));
+
+                // Always handle drawing canvas updates
+                this.drawUserLines();
+            }
+
+            loop(timestamp) {
+                this.update();
+                this.draw();
+                requestAnimationFrame((t) => this.loop(t));
+            }
+        }
+
+        window.onload = () => {
+            const game = new GameEngine();
+        };
+
+        window.addEventListener('resize', () => {
+            if(window.currentGameEngine && window.currentGameEngine.state === 'IDLE') {
+                window.currentGameEngine.positionTooltips();
+            }
+        });
+
+    </script>
+</body>
+</html>
