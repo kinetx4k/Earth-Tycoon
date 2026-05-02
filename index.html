@@ -222,6 +222,22 @@
             border-bottom: 1px solid var(--border-color);
         }
         .autocomplete-item:hover, .autocomplete-item.active { background-color: var(--accent); color: white; }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+        }
+        .stat-value { font-size: 1.5rem; font-weight: 900; }
+        .stat-label { font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; font-weight: 700; margin-top: 0.25rem; }
+
+        .dist-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+        .dist-bar { height: 1.25rem; background: var(--accent); border-radius: 0.25rem; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.75rem; font-weight: 900; transition: width 0.5s; min-width: 1.5rem; }
     </style>
 </head>
 <body>
@@ -229,12 +245,17 @@
     <!-- HOME SCREEN -->
     <div id="home-screen" class="min-h-screen flex flex-col items-center p-4">
         <header class="w-full max-w-4xl py-6 flex justify-between items-center border-b border-gray-700 mb-8 animate-fade">
-            <div class="flex items-center">
-                <div class="logo-box bg-green-box">V</div>
-                <div class="logo-box bg-green-box">E</div>
-                <div class="logo-box bg-green-box">X</div>
-                <div class="logo-box bg-blue-box">L</div>
-                <div class="logo-box bg-blue-box">E</div>
+            <div class="flex items-center gap-4">
+                <button onclick="openModal('profile-modal')" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition active:scale-90">
+                    <i class="fas fa-user text-white"></i>
+                </button>
+                <div class="flex items-center">
+                    <div class="logo-box bg-green-box">V</div>
+                    <div class="logo-box bg-green-box">E</div>
+                    <div class="logo-box bg-green-box">X</div>
+                    <div class="logo-box bg-blue-box">L</div>
+                    <div class="logo-box bg-blue-box">E</div>
+                </div>
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2" title="Your current win streak">
@@ -407,6 +428,50 @@
     </div>
 
     <!-- MODALS -->
+    <div id="profile-modal" class="modal" onclick="closeModal('profile-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 class="text-2xl font-black mb-6 text-center uppercase tracking-widest">Statistics</h3>
+            
+            <div class="grid grid-cols-4 gap-2 mb-8">
+                <div class="stat-box">
+                    <span id="stat-played" class="stat-value">0</span>
+                    <span class="stat-label">Played</span>
+                </div>
+                <div class="stat-box">
+                    <span id="stat-winpct" class="stat-value">0</span>
+                    <span class="stat-label">Win %</span>
+                </div>
+                <div class="stat-box">
+                    <span id="stat-streak" class="stat-value">0</span>
+                    <span class="stat-label">Current</span>
+                </div>
+                <div class="stat-box">
+                    <span id="stat-maxstreak" class="stat-value">0</span>
+                    <span class="stat-label">Max</span>
+                </div>
+            </div>
+
+            <h4 class="text-sm font-black uppercase mb-4 tracking-widest text-gray-500">Guess Distribution</h4>
+            <div id="guess-distribution" class="mb-8">
+                <!-- Javascript will fill this -->
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="exportSave()" class="bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-500 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-file-export"></i> Save to File
+                </button>
+                <button onclick="document.getElementById('import-file').click()" class="bg-gray-800 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-file-import"></i> Load from File
+                </button>
+                <input type="file" id="import-file" class="hidden" accept=".json" onchange="importSave(this)">
+            </div>
+
+            <div class="flex justify-center mt-8">
+                <button onclick="closeModal('profile-modal')" class="text-gray-500 font-bold hover:text-white transition">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div id="help-modal" class="modal" onclick="closeModal('help-modal')">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 class="text-2xl font-black mb-4 text-center uppercase tracking-widest">How to Play</h3>
@@ -581,6 +646,103 @@
         analysisCanvas.width = 300;
         analysisCanvas.height = 200;
         const actx = analysisCanvas.getContext('2d', { willReadFrequently: true });
+
+        // --- GLOBAL STATS LOGIC ---
+        function getStats() {
+            const defaultStats = {
+                gamesPlayed: 0,
+                gamesWon: 0,
+                maxStreak: 0,
+                distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+            };
+            return JSON.parse(localStorage.getItem('vexle-global-stats') || JSON.stringify(defaultStats));
+        }
+
+        function updateGlobalStats(won, tries) {
+            const stats = getStats();
+            stats.gamesPlayed++;
+            if (won) {
+                stats.gamesWon++;
+                if (tries <= 6) {
+                    stats.distribution[tries] = (stats.distribution[tries] || 0) + 1;
+                }
+            }
+            
+            const streakData = getStreak();
+            if (streakData.count > stats.maxStreak) {
+                stats.maxStreak = streakData.count;
+            }
+
+            localStorage.setItem('vexle-global-stats', JSON.stringify(stats));
+        }
+
+        function populateProfile() {
+            const stats = getStats();
+            const streakData = getStreak();
+            
+            document.getElementById('stat-played').textContent = stats.gamesPlayed;
+            const winPct = stats.gamesPlayed > 0 ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0;
+            document.getElementById('stat-winpct').textContent = winPct;
+            document.getElementById('stat-streak').textContent = streakData.count;
+            document.getElementById('stat-maxstreak').textContent = stats.maxStreak;
+
+            const distContainer = document.getElementById('guess-distribution');
+            distContainer.innerHTML = '';
+            
+            const maxVal = Math.max(...Object.values(stats.distribution), 1);
+            
+            for (let i = 1; i <= 6; i++) {
+                const count = stats.distribution[i] || 0;
+                const widthPct = Math.max((count / maxVal) * 100, 7);
+                
+                const row = document.createElement('div');
+                row.className = 'dist-row';
+                row.innerHTML = `
+                    <span class="w-4 text-xs font-bold">${i}</span>
+                    <div class="flex-grow">
+                        <div class="dist-bar" style="width: ${widthPct}%">${count}</div>
+                    </div>
+                `;
+                distContainer.appendChild(row);
+            }
+        }
+
+        function exportSave() {
+            const saveData = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('vexle-')) {
+                    saveData[key] = localStorage.getItem(key);
+                }
+            }
+            const blob = new Blob([JSON.stringify(saveData)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `vexle_save_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importSave(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    Object.keys(data).forEach(key => {
+                        if (key.startsWith('vexle-')) {
+                            localStorage.setItem(key, data[key]);
+                        }
+                    });
+                    location.reload();
+                } catch (err) {
+                    console.error("Failed to import save", err);
+                }
+            };
+            reader.readAsText(file);
+        }
 
         // --- STREAK & DATA LOGIC ---
         function getStreak() {
@@ -778,6 +940,7 @@
         function openModal(id) { 
             document.getElementById(id).style.display = 'flex'; 
             if (id === 'archive-modal') initCalendar();
+            if (id === 'profile-modal') populateProfile();
         }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
@@ -811,10 +974,8 @@
             document.getElementById('hint-btn').disabled = false;
             document.getElementById('guesses-container').innerHTML = '';
             
-            // Fixed: Archive mode should always be infinite
             infiniteMode = (currentMode === 'practice' && document.getElementById('infinite-toggle').checked) || currentMode === 'archive';
             
-            // Always show 6 guess fields initially
             for(let i=0; i<6; i++) {
                 document.getElementById('guesses-container').innerHTML += `<div class="guess-row empty" id="guess-row-${i}"></div>`;
             }
@@ -850,7 +1011,6 @@
                 if (gameInfoSubEl) gameInfoSubEl.textContent = "DAILY CHALLENGE";
                 targetCountry = countries[125]; 
             } else if (mode === 'archive') {
-                // Archive logic handled via startArchiveGame usually
             } else {
                 if (dailyInfoEl) dailyInfoEl.textContent = `Practice Mode`;
                 if (gameInfoSubEl) gameInfoSubEl.textContent = "UNLIMITED TRAINING";
@@ -867,7 +1027,6 @@
             document.getElementById('game-screen').classList.remove('hidden');
             resetGameUI();
             
-            // Fixed: Remove "Name a country to start" when viewing results
             document.getElementById('start-msg').classList.add('hidden');
             
             const dailyInfoEl = document.getElementById('daily-info');
@@ -1002,14 +1161,23 @@
                 img.src = `https://flagcdn.com/w320/${targetCountry.code}.png`;
             }
             
-            // Fixed: Only DAILY mode affects streaks. Archive and Practice are excluded.
-            if (!alreadySaved && currentMode === 'daily') {
-                const streak = updateStreak(won);
-                localStorage.setItem(`vexle-daily-${dailyDateKey}-status`, won ? 'won' : 'lost');
-                localStorage.setItem(`vexle-daily-${dailyDateKey}-data`, JSON.stringify(guesses.map(g => g.code)));
-                document.getElementById('streak-update-msg').classList.remove('hidden');
-                document.getElementById('final-streak-count').textContent = streak;
-            } else if (alreadySaved || currentMode === 'archive' || currentMode === 'practice') {
+            if (!alreadySaved) {
+                if (currentMode === 'daily' || currentMode === 'practice') {
+                    updateGlobalStats(won, guesses.length);
+                }
+                
+                if (currentMode === 'daily') {
+                    const streak = updateStreak(won);
+                    localStorage.setItem(`vexle-daily-${dailyDateKey}-status`, won ? 'won' : 'lost');
+                    localStorage.setItem(`vexle-daily-${dailyDateKey}-data`, JSON.stringify(guesses.map(g => g.code)));
+                    document.getElementById('streak-update-msg').classList.remove('hidden');
+                    document.getElementById('final-streak-count').textContent = streak;
+                } else {
+                    const streak = getStreak().count;
+                    document.getElementById('streak-update-msg').classList.remove('hidden');
+                    document.getElementById('final-streak-count').textContent = streak;
+                }
+            } else {
                 const streak = getStreak().count;
                 document.getElementById('streak-update-msg').classList.remove('hidden');
                 document.getElementById('final-streak-count').textContent = streak;
