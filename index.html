@@ -292,19 +292,10 @@
 
             <!-- Practice & Archive Section -->
             <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade" style="animation-delay: 0.1s">
-                <div onclick="startGame('practice')" class="game-mode-card rounded-2xl p-6 flex justify-between items-center relative overflow-hidden group cursor-pointer">
+                <div onclick="startGame('practice')" class="game-mode-card rounded-2xl p-6 flex justify-between items-center relative overflow-hidden group">
                     <div class="z-10">
                         <h3 class="text-xl font-bold mb-2">Practice Vexle</h3>
-                        <p class="text-sm text-gray-400 mb-4">Play as much as you want.</p>
-                        
-                        <div class="flex items-center gap-3 mb-6 bg-black/20 p-2 rounded-lg inline-flex" onclick="event.stopPropagation()">
-                            <span class="text-[10px] font-black uppercase text-gray-400">Infinite Tries</span>
-                            <label class="switch">
-                                <input type="checkbox" id="infinite-toggle">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <br>
+                        <p class="text-sm text-gray-400 mb-6">Play as much as you want.</p>
                         <button class="text-blue-400 font-bold hover:underline">Play Now →</button>
                     </div>
                     <div class="absolute right-[-20px] top-[-20px] transform rotate-12 opacity-80 group-hover:scale-105 transition-transform duration-500">
@@ -477,6 +468,10 @@
                 <!-- Javascript will fill this -->
             </div>
 
+            <div id="country-guess-stats" class="mb-10">
+                <!-- New section for country frequency -->
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onclick="exportSave()" class="bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2 shadow-md">
                     <i class="fas fa-save text-blue-400"></i> Export Save
@@ -542,6 +537,16 @@
                     <span class="text-xs text-gray-500">Toggle between dark and light mode</span>
                 </div>
                 <button id="theme-toggle" class="bg-gray-800 border border-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700">Light Mode</button>
+            </div>
+            <div class="flex justify-between items-center py-4 border-b border-gray-700">
+                <div class="flex flex-col">
+                    <span class="font-bold">Practice Infinite Tries</span>
+                    <span class="text-xs text-gray-500">No guess limit in Practice Mode</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="infinite-toggle">
+                    <span class="slider"></span>
+                </label>
             </div>
             <div class="mt-8 flex justify-center">
                 <button onclick="closeModal('settings-modal')" class="bg-blue-600 px-10 py-2 rounded-full font-bold">Save</button>
@@ -680,7 +685,7 @@
                 }
             }
             
-            // Track how often each country was guessed (still counting in background)
+            // Track how often each country was guessed
             guesses.forEach(g => {
                 stats.countryFrequency[g.code] = (stats.countryFrequency[g.code] || 0) + 1;
             });
@@ -721,6 +726,50 @@
                     </div>
                 `;
                 distContainer.appendChild(row);
+            }
+
+            // Country Frequency section
+            const countryStatsContainer = document.getElementById('country-guess-stats');
+            countryStatsContainer.innerHTML = '';
+            
+            const freqEntries = Object.entries(stats.countryFrequency || {})
+                .sort((a, b) => b[1] - a[1]) // Sort by frequency descending
+                .slice(0, 15); // Show top 15 most guessed
+
+            if (freqEntries.length > 0) {
+                const mostGuessed = freqEntries[0];
+                const mostGuessedCountry = countries.find(c => c.code === mostGuessed[0]);
+                
+                const header = document.createElement('div');
+                header.className = 'mb-4 p-3 bg-gray-800/50 border-l-4 border-blue-500 rounded-r-lg';
+                header.innerHTML = `
+                    <p class="text-xs font-black uppercase text-gray-500 mb-1 tracking-widest">Global Guess Report</p>
+                    <p class="text-sm font-bold text-gray-200 italic">In ${stats.gamesPlayed} games, you've guessed ${mostGuessedCountry?.name || '...'} ${mostGuessed[1]} times!</p>
+                `;
+                countryStatsContainer.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar';
+                
+                freqEntries.forEach(([code, count]) => {
+                    const country = countries.find(c => c.code === code);
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between bg-gray-800/30 p-2 rounded border border-gray-700/50';
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <img src="https://flagcdn.com/w40/${code}.png" class="w-6 h-4 object-cover rounded-sm shadow">
+                            <span class="text-xs font-bold text-gray-300">${country ? country.name : code}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] uppercase font-black text-gray-500">Times:</span>
+                            <span class="text-xs font-black text-blue-400">${count}</span>
+                        </div>
+                    `;
+                    grid.appendChild(item);
+                });
+                countryStatsContainer.appendChild(grid);
+            } else {
+                 countryStatsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No guess data available yet.</p>';
             }
         }
 
@@ -1179,7 +1228,7 @@
             }
             
             if (!alreadySaved) {
-                // Statistics counting for all modes
+                // Now including all modes in global statistics
                 updateGlobalStats(won, guesses.length);
                 
                 if (currentMode === 'daily') {
