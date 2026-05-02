@@ -409,10 +409,40 @@
     <!-- MODALS -->
     <div id="help-modal" class="modal" onclick="closeModal('help-modal')">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-xl font-bold mb-4 text-center">Help</h3>
-            <p class="text-sm text-gray-400 mb-4 text-center">Every day a new flag is chosen. You have 6 attempts to guess it. With each guess, the percentage indicates the similarity of the pixels.</p>
+            <h3 class="text-2xl font-black mb-4 text-center uppercase tracking-widest">How to Play</h3>
+            
+            <div class="space-y-4 text-gray-300 text-center mb-8">
+                <p>Guess the hidden flag in six tries.</p>
+                <p>After each guess, pixels of the solution that overlap with the guessed flag will be revealed.</p>
+                <p>The flags have been scaled to the same aspect ratio.</p>
+            </div>
+            
+            <div class="p-6 border border-gray-700 bg-gray-900 rounded-xl">
+                <div class="text-center mb-4">
+                    <h4 class="text-lg font-bold">Example</h4>
+                    <div class="flex items-center justify-center gap-4 mt-2">
+                        <button onclick="changeExample(-1)" class="text-gray-500 hover:text-white"><i class="fas fa-chevron-left"></i></button>
+                        <span class="example-step-text font-semibold text-sm">Guess #1</span>
+                        <button onclick="changeExample(1)" class="text-gray-500 hover:text-white"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="example-country-text font-bold mt-1">Hungary</div>
+                </div>
+
+                <div class="flex justify-center mb-6">
+                    <img class="example-image-el w-full border border-gray-700 shadow-lg rounded max-h-[150px] object-contain transition-all duration-500" src="">
+                </div>
+
+                <div class="flex justify-between items-center bg-gray-800 border border-gray-700 rounded p-3 mb-4">
+                    <span class="example-row-name-text font-bold">Hungary</span>
+                    <span class="example-row-pct-text font-mono text-blue-400">22.0%</span>
+                    <img class="example-row-flag-el w-8 h-5 object-cover rounded shadow" src="">
+                </div>
+
+                <p class="example-desc-text text-sm text-gray-300 text-center">The flag of Hungary has a 22.0% overlap with the hidden flag.</p>
+            </div>
+            
             <div class="flex justify-center mt-6">
-                <button onclick="closeModal('help-modal')" class="bg-blue-600 px-6 py-2 rounded-full font-bold">Close</button>
+                <button onclick="closeModal('help-modal')" class="bg-blue-600 px-8 py-2 rounded-full font-bold shadow-lg hover:scale-105 active:scale-95 transition">Got it!</button>
             </div>
         </div>
     </div>
@@ -632,6 +662,7 @@
             const rand = mulberry32(seed);
             targetCountry = countries[Math.floor(rand() * countries.length)];
             resetGameUI();
+            
             const status = localStorage.getItem(`vexle-daily-${dateKey}-status`);
             if (status) {
                 const data = JSON.parse(localStorage.getItem(`vexle-daily-${dateKey}-data`) || '[]');
@@ -780,7 +811,8 @@
             document.getElementById('hint-btn').disabled = false;
             document.getElementById('guesses-container').innerHTML = '';
             
-            infiniteMode = (currentMode === 'practice' && document.getElementById('infinite-toggle').checked);
+            // Fixed: Archive mode should always be infinite
+            infiniteMode = (currentMode === 'practice' && document.getElementById('infinite-toggle').checked) || currentMode === 'archive';
             
             // Always show 6 guess fields initially
             for(let i=0; i<6; i++) {
@@ -817,6 +849,8 @@
                 if (dailyInfoEl) dailyInfoEl.textContent = `May 2, 2026 - Day 2`;
                 if (gameInfoSubEl) gameInfoSubEl.textContent = "DAILY CHALLENGE";
                 targetCountry = countries[125]; 
+            } else if (mode === 'archive') {
+                // Archive logic handled via startArchiveGame usually
             } else {
                 if (dailyInfoEl) dailyInfoEl.textContent = `Practice Mode`;
                 if (gameInfoSubEl) gameInfoSubEl.textContent = "UNLIMITED TRAINING";
@@ -832,6 +866,9 @@
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             resetGameUI();
+            
+            // Fixed: Remove "Name a country to start" when viewing results
+            document.getElementById('start-msg').classList.add('hidden');
             
             const dailyInfoEl = document.getElementById('daily-info');
             const gameInfoSubEl = document.getElementById('game-info-sub');
@@ -865,7 +902,6 @@
             if (!gameActive) return;
             let inputVal = document.getElementById('country-input').value.trim();
             
-            // If enter is pressed and there are autocomplete suggestions, take the first/active one
             if (filteredCountriesList.length > 0) {
                 const idx = activeAutocompleteIndex >= 0 ? activeAutocompleteIndex : 0;
                 inputVal = filteredCountriesList[idx].name;
@@ -896,7 +932,6 @@
             const index = guesses.length;
             guesses.push(guessObj);
             let row;
-            // Populate existing empty rows if index < 6, otherwise create new one for infinite mode
             if (index < 6) {
                 row = document.getElementById(`guess-row-${index}`);
                 row.classList.remove('empty');
@@ -966,13 +1001,15 @@
                 img.onload = () => { actx.drawImage(img, 0, 0, 300, 200); ctx.putImageData(actx.getImageData(0,0,300,200),0,0); };
                 img.src = `https://flagcdn.com/w320/${targetCountry.code}.png`;
             }
-            if (!alreadySaved && (currentMode === 'daily' || currentMode === 'archive')) {
+            
+            // Fixed: Only DAILY mode affects streaks. Archive and Practice are excluded.
+            if (!alreadySaved && currentMode === 'daily') {
                 const streak = updateStreak(won);
                 localStorage.setItem(`vexle-daily-${dailyDateKey}-status`, won ? 'won' : 'lost');
                 localStorage.setItem(`vexle-daily-${dailyDateKey}-data`, JSON.stringify(guesses.map(g => g.code)));
                 document.getElementById('streak-update-msg').classList.remove('hidden');
                 document.getElementById('final-streak-count').textContent = streak;
-            } else if (alreadySaved) {
+            } else if (alreadySaved || currentMode === 'archive' || currentMode === 'practice') {
                 const streak = getStreak().count;
                 document.getElementById('streak-update-msg').classList.remove('hidden');
                 document.getElementById('final-streak-count').textContent = streak;
@@ -993,7 +1030,7 @@
             listDiv.classList.remove('hidden');
             
             filteredCountriesList = countries.filter(c => c.name.toLowerCase().includes(val.toLowerCase())).slice(0, 6);
-            activeAutocompleteIndex = -1; // Reset selection on typing
+            activeAutocompleteIndex = -1; 
 
             filteredCountriesList.forEach((c, index) => {
                 const div = document.createElement("div");
