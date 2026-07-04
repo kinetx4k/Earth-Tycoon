@@ -2,1329 +2,1131 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vexle</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Earth Tycoon</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        
-        :root {
-            --bg-color: #121212;
-            --text-color: #ffffff;
-            --card-bg: #1f2937;
-            --border-color: #374151;
-            --header-bg: #1a1a1a;
-            --accent: #3b82f6;
-        }
-
-        .light-mode {
-            --bg-color: #f3f4f6;
-            --text-color: #111827;
-            --card-bg: #ffffff;
-            --border-color: #d1d5db;
-            --header-bg: #e5e7eb;
-            --accent: #2563eb;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
-            transition: background-color 0.3s, color 0.3s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
         }
 
-        /* Animations */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-
-        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
-        .animate-slide { animation: slideIn 0.3s ease-out forwards; }
-        .shake { animation: shake 0.2s ease-in-out 2; }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-
-        .logo-box {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            font-weight: 900;
-            font-size: 16px;
-            margin-right: 2px;
-            color: white;
-            border-radius: 4px;
-        }
-        .bg-green-box { background-color: #538d4e; }
-        .bg-blue-box { background-color: #3b82f6; }
-
-        .game-mode-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .game-mode-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            border-color: var(--accent);
-        }
-
-        .guess-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 8px 16px;
-            margin-bottom: 8px;
-            height: 52px;
-        }
-
-        .guess-row.empty {
-            background-color: transparent;
-            border: 1px dashed var(--border-color);
-            opacity: 0.4;
-        }
-
-        .guess-percent {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            color: var(--accent);
-        }
-
-        .guess-flag {
-            width: 44px;
-            height: 28px;
-            object-fit: cover;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        #game-canvas {
+        body, html {
+            height: 100%;
             width: 100%;
-            max-width: 400px;
-            aspect-ratio: 3/2;
-            background-color: #1e1e1e;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            margin: 0 auto;
-            display: block;
+            overflow: hidden;
+            background-color: #f0f0f0;
         }
 
-        .modal {
-            background-color: rgba(0, 0, 0, 0.9);
-            display: none;
-            position: fixed;
-            inset: 0;
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        /* UI Overlays */
+        .hud {
+            position: absolute;
             z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            backdrop-filter: blur(4px);
-        }
-        .modal-content {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            width: 100%;
-            max-width: 550px;
-            border-radius: 16px;
-            padding: 28px;
-            position: relative;
-            max-height: 90vh;
-            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            padding: 10px 15px;
+            pointer-events: auto;
         }
 
-        /* Calendar Grid */
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-        }
-        .calendar-day {
-            aspect-ratio: 1;
+        #top-bar {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 0.875rem;
-            cursor: pointer;
-            border: 1px solid var(--border-color);
-            transition: all 0.2s;
+            gap: 10px;
+            width: 95%;
+            max-width: 500px;
+            justify-content: space-between;
         }
-        .calendar-day:hover { background-color: var(--accent); color: white; border-color: transparent; }
-        .calendar-day.won { background-color: #059669; color: white; border-color: transparent; }
-        .calendar-day.lost { background-color: #dc2626; color: white; border-color: transparent; }
-        .calendar-day.future { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
-
-        #ai-hint-box {
-            background: linear-gradient(135deg, #1e3a8a, #1e40af);
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 10px;
-            display: none;
-            border-left: 4px solid #60a5fa;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #4b5563;
-            transition: .4s;
-            border-radius: 20px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px; width: 16px;
-            left: 2px; bottom: 2px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: #3b82f6; }
-        input:checked + .slider:before { transform: translateX(20px); }
-
-        #autocomplete-list {
-            max-height: 250px;
-            overflow-y: auto;
-            border: 1px solid var(--border-color);
-            background-color: var(--card-bg);
-            position: absolute;
-            width: 100%;
-            z-index: 100;
-            border-radius: 0 0 8px 8px;
-        }
-        .autocomplete-item {
-            padding: 10px 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .autocomplete-item:hover, .autocomplete-item.active { background-color: var(--accent); color: white; }
 
         .stat-box {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 1.25rem 0.75rem;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 1rem;
-            border: 1px solid var(--border-color);
-            transition: transform 0.2s, background 0.2s;
+            flex: 1;
         }
-        .stat-box:hover {
-            background: rgba(255, 255, 255, 0.06);
-            transform: scale(1.02);
-        }
-        .stat-value { font-size: 1.75rem; font-weight: 900; line-height: 1.2; }
-        .stat-label { font-size: 0.65rem; text-transform: uppercase; color: #9ca3af; font-weight: 800; margin-top: 0.5rem; letter-spacing: 0.05em; }
-        .stat-icon { font-size: 1.25rem; margin-bottom: 0.5rem; }
 
-        .dist-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
-        .dist-bar { height: 1.25rem; background: var(--accent); border-radius: 0.25rem; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.75rem; font-weight: 900; transition: width 0.5s; min-width: 1.5rem; }
+        .stat-label {
+            font-size: 0.70rem;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.0rem;
+            font-weight: 900;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .money {
+            color: #27ae60;
+        }
+
+        #bottom-bar {
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.3s;
+            text-align: center;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-buy {
+            background: #3498db;
+        }
+
+        .btn-buy.active {
+            background: #e74c3c;
+            box-shadow: 0 0 10px #e74c3c;
+        }
+
+        .btn-claim {
+            background: #f1c40f;
+            color: #d35400;
+        }
+
+        .btn-claim:disabled {
+            background: #bdc3c7;
+            color: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-checkout {
+            background: #2ecc71;
+            display: none;
+        }
+
+        .btn-checkout:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Modals / Popups */
+        #purchase-modal, #save-warning-modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 85%;
+            max-width: 340px;
+        }
+
+        #purchase-modal h2, #save-warning-modal h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        #purchase-modal p, #save-warning-modal p {
+            margin-bottom: 20px;
+            color: #555;
+            font-size: 1.05rem;
+            line-height: 1.4;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-confirm {
+            background: #2ecc71;
+            flex: 1;
+        }
+
+        .btn-cancel {
+            background: #95a5a6;
+            flex: 1;
+        }
+
+        /* Rarity Reveal Screen - Animated */
+        #reveal-screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 20, 30, 0.95);
+            z-index: 3000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .reveal-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            text-shadow: 0 0 15px rgba(255,255,255,0.5);
+        }
+
+        .reveal-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 60vh;
+            overflow-y: auto;
+            width: 90%;
+            max-width: 350px;
+            margin-bottom: 30px;
+            padding-right: 5px;
+        }
+
+        .reveal-item {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: slideUpFade 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            background: rgba(255,255,255,0.1);
+            padding: 12px 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .reveal-item-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .reveal-item-rent {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        @keyframes slideUpFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .btn-continue {
+            background: #ecf0f1;
+            color: #2c3e50;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-continue:hover {
+            background: #bdc3c7;
+        }
+
+        /* Message Toast */
+        #toast {
+            position: absolute;
+            top: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 4000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            font-weight: bold;
+            text-align: center;
+            width: 85%;
+            max-width: 300px;
+        }
+        
+        .leaflet-control-zoom {
+            margin-top: 110px !important;
+        }
+
+        /* Hidden file input for loading saves */
+        #file-input {
+            display: none;
+        }
+
+        /* Tooltip style for rent on map tiles */
+        .leaflet-tooltip.rent-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: white !important;
+            font-size: 0.8rem;
+            font-weight: 900;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 5px rgba(0,0,0,0.8);
+            text-align: center;
+            padding: 0 !important;
+            margin: 0 !important;
+            transition: opacity 0.3s;
+        }
+        .leaflet-tooltip.rent-label::before {
+            display: none !important;
+        }
+
+        /* Hide labels and tiles when zoomed out */
+        .zoomed-out .rent-label {
+            display: none !important;
+            opacity: 0 !important;
+        }
+
+        /* Custom marker cluster styling */
+        .custom-cluster-icon {
+            background: transparent;
+        }
+
     </style>
 </head>
 <body>
 
-    <!-- HOME SCREEN -->
-    <div id="home-screen" class="min-h-screen flex flex-col items-center p-4">
-        <header class="w-full max-w-4xl py-6 flex justify-between items-center border-b border-gray-700 mb-8 animate-fade">
-            <div class="flex items-center gap-4">
-                <button onclick="openModal('profile-modal')" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition active:scale-90 border border-gray-600 shadow-lg">
-                    <i class="fas fa-user text-white"></i>
-                </button>
-                <div class="flex items-center">
-                    <div class="logo-box bg-green-box">V</div>
-                    <div class="logo-box bg-green-box">E</div>
-                    <div class="logo-box bg-green-box">X</div>
-                    <div class="logo-box bg-blue-box">L</div>
-                    <div class="logo-box bg-blue-box">E</div>
-                </div>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2" title="Your current win streak">
-                    <i class="fas fa-fire text-orange-500"></i>
-                    <span id="streak-count-home" class="font-bold text-lg">0</span>
-                </div>
-                <a href="https://discord.com/users/1056147064569987163" target="_blank" class="text-sm hover:text-blue-400 transition">Contact</a>
-            </div>
-        </header>
-
-        <main class="w-full max-w-2xl flex flex-col items-center gap-8">
-            <!-- Daily Card -->
-            <div onclick="startGame('daily')" class="game-mode-card w-full rounded-2xl p-8 flex justify-between items-center relative overflow-hidden group animate-fade">
-                <div class="z-10">
-                    <p class="text-gray-400 text-sm mb-1 uppercase tracking-widest font-bold">Today's Challenge</p>
-                    <h2 class="text-3xl font-black mb-4">Daily Vexle</h2>
-                    <div id="daily-status" class="mb-4 text-sm font-semibold"></div>
-                    <button id="daily-play-btn" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold hover:bg-blue-500 transition-all shadow-xl hover:scale-105 active:scale-95">Play Now</button>
-                </div>
-                <div class="absolute right-[-20px] top-[-20px] transform rotate-12 opacity-80 group-hover:scale-105 transition-transform duration-500">
-                    <img src="https://flagcdn.com/w320/ca.png" alt="Canada" class="w-64 rounded-lg shadow-2xl border border-gray-700">
-                    <div class="bg-gray-900 rounded border border-gray-700 p-2 mt-2 w-48 text-xs text-white">
-                        <div class="flex justify-between border-b border-gray-700 py-1"><span class="truncate w-24">Belgium</span><span>25.2%</span></div>
-                        <div class="flex justify-between border-b border-gray-700 py-1"><span class="truncate w-24">Australia</span><span>7.6%</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Practice & Archive Section -->
-            <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade" style="animation-delay: 0.1s">
-                <div onclick="startGame('practice')" class="game-mode-card rounded-2xl p-6 flex justify-between items-center relative overflow-hidden group">
-                    <div class="z-10">
-                        <h3 class="text-xl font-bold mb-2">Practice Vexle</h3>
-                        <p class="text-sm text-gray-400 mb-6">Play as much as you want.</p>
-                        <button class="text-blue-400 font-bold hover:underline">Play Now →</button>
-                    </div>
-                    <div class="absolute right-[-20px] top-[-20px] transform rotate-12 opacity-80 group-hover:scale-105 transition-transform duration-500">
-                        <div class="bg-gray-900 rounded border border-gray-700 p-2 mt-2 w-64 text-sm shadow-2xl text-white">
-                            <div class="flex justify-between items-center border-b border-gray-700 py-2">
-                                <span class="truncate w-24">Belgium</span><span>25.2%</span><img src="https://flagcdn.com/w20/be.png" class="w-6">
-                            </div>
-                            <div class="flex justify-between items-center py-2">
-                                <span class="truncate w-24 text-green-500">Canada</span><span class="text-green-500">100.0%</span><img src="https://flagcdn.com/w20/ca.png" class="w-6">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div onclick="openModal('archive-modal')" class="game-mode-card rounded-2xl p-6 flex flex-col justify-between items-start animate-fade">
-                    <h3 class="text-xl font-bold mb-2">Archive</h3>
-                    <p class="text-sm text-gray-400 mb-6">Missed a day? Replay previous challenges here.</p>
-                    <button class="text-purple-400 font-bold hover:underline">View Calendar →</button>
-                </div>
-            </div>
-
-            <!-- Old How to Play Section -->
-            <div class="w-full mt-4 border border-gray-700 rounded-2xl overflow-hidden bg-gray-900/30 animate-fade" style="animation-delay: 0.2s">
-                <div class="bg-gray-800/50 text-center py-4 border-b border-gray-700">
-                    <h3 class="text-lg font-bold tracking-widest uppercase">How to Play</h3>
-                </div>
-                <div class="p-8">
-                    <div class="space-y-4 text-gray-300 text-center mb-8">
-                        <p>Guess the hidden flag in six tries.</p>
-                        <p>After each guess, pixels of the solution that overlap with the guessed flag will be revealed.</p>
-                        <p>The flags have been scaled to the same aspect ratio.</p>
-                    </div>
-                    
-                    <div class="p-6 border border-gray-700 bg-gray-900 rounded-xl max-w-md mx-auto">
-                        <div class="text-center mb-4">
-                            <h4 class="text-lg font-bold">Example</h4>
-                            <div class="flex items-center justify-center gap-4 mt-2">
-                                <button onclick="changeExample(-1)" class="text-gray-500 hover:text-white"><i class="fas fa-chevron-left"></i></button>
-                                <span class="example-step-text font-semibold text-sm">Guess #1</span>
-                                <button onclick="changeExample(1)" class="text-gray-500 hover:text-white"><i class="fas fa-chevron-right"></i></button>
-                            </div>
-                            <div class="example-country-text font-bold mt-1">Hungary</div>
-                        </div>
-
-                        <div class="flex justify-center mb-6">
-                            <img class="example-image-el w-full border border-gray-700 shadow-lg rounded max-h-[150px] object-contain transition-all duration-500" src="">
-                        </div>
-
-                        <div class="flex justify-between items-center bg-gray-800 border border-gray-700 rounded p-3 mb-4">
-                            <span class="example-row-name-text font-bold">Hungary</span>
-                            <span class="example-row-pct-text font-mono text-blue-400">22.0%</span>
-                            <img class="example-row-flag-el w-8 h-5 object-cover rounded shadow" src="">
-                        </div>
-
-                        <p class="example-desc-text text-sm text-gray-300 text-center">The flag of Hungary has a 22.0% overlap with the hidden flag.</p>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- GAME SCREEN -->
-    <div id="game-screen" class="hidden min-h-screen flex flex-col items-center">
-        <header class="w-full max-w-4xl px-4 py-4 flex justify-between items-center border-b border-gray-700 bg-black/20 sticky top-0 z-50 backdrop-blur-md">
-            <div class="flex items-center gap-4">
-                <button onclick="goHome()" class="w-10 h-10 rounded-full bg-gray-800 text-white flex items-center justify-center hover:bg-gray-700 transition active:scale-90">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-            </div>
-            <div class="flex flex-col items-center text-center">
-                <h1 class="text-2xl font-black tracking-widest uppercase">Vexle</h1>
-                <div id="daily-info" class="text-xs text-gray-400 mt-1"></div>
-                <div id="game-info-sub" class="text-[10px] text-gray-500 font-bold uppercase mt-1"></div>
-            </div>
-            <div class="flex items-center gap-4">
-                <div id="streak-badge-game" class="hidden items-center gap-1 bg-orange-950/30 text-orange-500 px-2 py-1 rounded-full border border-orange-500/20 text-xs font-bold">
-                    <i class="fas fa-fire"></i> <span id="streak-count-game">0</span>
-                </div>
-                <button onclick="openModal('help-modal')" class="text-gray-400 hover:text-white"><i class="fas fa-question-circle text-xl"></i></button>
-                <button onclick="openModal('settings-modal')" class="text-gray-400 hover:text-white"><i class="fas fa-cog text-xl"></i></button>
-            </div>
-        </header>
-
-        <main class="w-full max-w-lg px-4 py-8 flex flex-col flex-grow">
-            <div class="mb-6 relative animate-fade">
-                <canvas id="game-canvas" width="300" height="200"></canvas>
-                <div id="start-msg" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span class="text-gray-400 font-bold bg-black/40 px-6 py-3 rounded-full border border-white/10 backdrop-blur-sm">Name a country to start</span>
-                </div>
-                <div id="loading-overlay" class="absolute inset-0 bg-black/80 flex items-center justify-center rounded-xl hidden">
-                    <div class="flex flex-col items-center gap-4">
-                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
-                        <span class="text-xs font-bold uppercase tracking-widest">Analyzing Pixels...</span>
-                    </div>
-                </div>
-            </div>
-
-            <div id="ai-hint-box">
-                <p class="text-xs font-bold uppercase text-blue-300 mb-1"><i class="fas fa-robot mr-2"></i> AI Hint</p>
-                <div id="ai-hint-text" class="text-sm italic text-gray-100">Asking Gemini for a clue...</div>
-            </div>
-
-            <div id="guesses-container" class="flex flex-col gap-2 mb-6"></div>
-
-            <div id="input-area" class="mt-auto">
-                <div id="input-container" class="relative mb-4">
-                    <input type="text" id="country-input" autocomplete="off" placeholder="Type a country name..." 
-                        class="w-full bg-gray-800/50 border border-gray-600 rounded-xl py-4 px-6 text-white focus:outline-none focus:border-blue-500 transition-all shadow-inner text-lg">
-                    <div id="autocomplete-list" class="hidden shadow-2xl"></div>
-                </div>
-
-                <div class="flex justify-between items-center">
-                    <button id="hint-btn" onclick="getGeminiHint()" class="hidden bg-gray-800 text-gray-300 px-4 py-2 rounded-lg text-sm font-bold border border-gray-700 hover:bg-gray-700 transition">
-                        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i> Get Hint
-                    </button>
-                    <button id="guess-btn" class="bg-blue-600 text-white font-black py-3 px-10 rounded-xl hover:bg-blue-500 transition shadow-lg active:scale-95 ml-auto">
-                        GUESS
-                    </button>
-                </div>
-            </div>
-
-            <div id="result-message" class="hidden mt-6 text-center p-6 rounded-2xl bg-gray-800 border border-gray-700 animate-fade">
-                <h3 id="result-title" class="text-2xl font-black mb-2"></h3>
-                <p id="result-desc" class="text-gray-300 mb-6"></p>
-                <div id="streak-update-msg" class="mb-6 hidden">
-                    <div class="inline-flex items-center gap-3 bg-orange-500/10 text-orange-500 px-4 py-2 rounded-full border border-orange-500/20">
-                        <i class="fas fa-fire-alt text-xl"></i>
-                        <span class="font-black text-lg">STREAK: <span id="final-streak-count">0</span></span>
-                    </div>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <button id="restart-btn" onclick="startGame('practice')" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold hover:bg-blue-500 transition shadow-lg">Play Again</button>
-                    <button onclick="goHome()" class="text-gray-400 hover:text-white text-sm font-bold">Back to Menu</button>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- MODALS -->
-    <div id="profile-modal" class="modal" onclick="closeModal('profile-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-2xl font-black mb-8 text-center uppercase tracking-widest text-blue-500">Your Progress</h3>
-            
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-                <div class="stat-box">
-                    <i class="fas fa-gamepad stat-icon text-blue-400"></i>
-                    <span id="stat-played" class="stat-value">0</span>
-                    <span class="stat-label">Played</span>
-                </div>
-                <div class="stat-box">
-                    <i class="fas fa-chart-line stat-icon text-green-400"></i>
-                    <span id="stat-winpct" class="stat-value">0</span>
-                    <span class="stat-label">Win %</span>
-                </div>
-                <div class="stat-box">
-                    <i class="fas fa-fire stat-icon text-orange-500"></i>
-                    <span id="stat-streak" class="stat-value">0</span>
-                    <span class="stat-label">Streak</span>
-                </div>
-                <div class="stat-box">
-                    <i class="fas fa-trophy stat-icon text-yellow-500"></i>
-                    <span id="stat-maxstreak" class="stat-value">0</span>
-                    <span class="stat-label">Max Streak</span>
-                </div>
-            </div>
-
-            <h4 class="text-xs font-black uppercase mb-4 tracking-widest text-gray-500 flex items-center gap-2">
-                <i class="fas fa-signal"></i> Guess Distribution
-            </h4>
-            <div id="guess-distribution" class="mb-10">
-                <!-- Javascript will fill this -->
-            </div>
-
-            <div id="country-guess-stats" class="mb-10">
-                <!-- New section for country frequency -->
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onclick="exportSave()" class="bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2 shadow-md">
-                    <i class="fas fa-save text-blue-400"></i> Export Save
-                </button>
-                <button onclick="document.getElementById('import-file').click()" class="bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-bold hover:bg-gray-700 transition flex items-center justify-center gap-2 shadow-md">
-                    <i class="fas fa-upload text-green-400"></i> Import Save
-                </button>
-                <input type="file" id="import-file" class="hidden" accept=".json" onchange="importSave(this)">
-            </div>
-
-            <div class="flex justify-center mt-10">
-                <button onclick="closeModal('profile-modal')" class="bg-blue-600 text-white px-10 py-3 rounded-full font-black uppercase tracking-widest text-sm hover:bg-blue-500 transition shadow-xl">Close</button>
-            </div>
+    <div id="top-bar" class="hud">
+        <div class="stat-box">
+            <span class="stat-label">Balance</span>
+            <span class="stat-value money" id="balance-display">$5,000.00</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">Properties</span>
+            <span class="stat-value" id="property-count">0</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">Rent Pending</span>
+            <span class="stat-value money" id="rent-display">$0.00</span>
+        </div>
+        <div class="stat-box" id="btn-manual-save" style="cursor: pointer; background: #eaedf0; border-radius: 8px; padding: 2px 5px;">
+            <span class="stat-label">Backup</span>
+            <span class="stat-value" style="color: #2980b9; font-size: 0.9rem;">💾 Save</span>
+        </div>
+        <div class="stat-box" id="btn-manual-load" style="cursor: pointer; background: #eaedf0; border-radius: 8px; padding: 2px 5px;">
+            <span class="stat-label">Restore</span>
+            <span class="stat-value" style="color: #8e44ad; font-size: 0.9rem;">📂 Load</span>
         </div>
     </div>
 
-    <div id="help-modal" class="modal" onclick="closeModal('help-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-2xl font-black mb-4 text-center uppercase tracking-widest">How to Play</h3>
-            
-            <div class="space-y-4 text-gray-300 text-center mb-8">
-                <p>Guess the hidden flag in six tries.</p>
-                <p>After each guess, pixels of the solution that overlap with the guessed flag will be revealed.</p>
-                <p>The flags have been scaled to the same aspect ratio.</p>
-            </div>
-            
-            <div class="p-6 border border-gray-700 bg-gray-900 rounded-xl">
-                <div class="text-center mb-4">
-                    <h4 class="text-lg font-bold">Example</h4>
-                    <div class="flex items-center justify-center gap-4 mt-2">
-                        <button onclick="changeExample(-1)" class="text-gray-500 hover:text-white"><i class="fas fa-chevron-left"></i></button>
-                        <span class="example-step-text font-semibold text-sm">Guess #1</span>
-                        <button onclick="changeExample(1)" class="text-gray-500 hover:text-white"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <div class="example-country-text font-bold mt-1">Hungary</div>
-                </div>
+    <input type="file" id="file-input" accept=".json,.enc">
 
-                <div class="flex justify-center mb-6">
-                    <img class="example-image-el w-full border border-gray-700 shadow-lg rounded max-h-[150px] object-contain transition-all duration-500" src="">
-                </div>
+    <div id="bottom-bar" class="hud">
+        <button id="btn-toggle-buy" class="btn btn-buy">Buy Property</button>
+        <button id="btn-claim-rent" class="btn btn-claim" disabled>Claim Rent</button>
+        <button id="btn-checkout" class="btn btn-checkout" disabled>Checkout (0)</button>
+    </div>
 
-                <div class="flex justify-between items-center bg-gray-800 border border-gray-700 rounded p-3 mb-4">
-                    <span class="example-row-name-text font-bold">Hungary</span>
-                    <span class="example-row-pct-text font-mono text-blue-400">22.0%</span>
-                    <img class="example-row-flag-el w-8 h-5 object-cover rounded shadow" src="">
-                </div>
+    <div id="map"></div>
 
-                <p class="example-desc-text text-sm text-gray-300 text-center">The flag of Hungary has a 22.0% overlap with the hidden flag.</p>
-            </div>
-            
-            <div class="flex justify-center mt-6">
-                <button onclick="closeModal('help-modal')" class="bg-blue-600 px-8 py-2 rounded-full font-bold shadow-lg hover:scale-105 active:scale-95 transition">Got it!</button>
-            </div>
+    <div id="purchase-modal">
+        <h2>Confirm Purchase</h2>
+        <p id="purchase-count">Tiles: 0</p>
+        <p id="purchase-price">Total Price: $0</p>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" id="btn-cancel-buy">Cancel</button>
+            <button class="btn btn-confirm" id="btn-confirm-buy">Purchase</button>
         </div>
     </div>
 
-    <div id="settings-modal" class="modal" onclick="closeModal('settings-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-xl font-bold mb-4 text-center">Settings</h3>
-            <div class="flex justify-between items-center py-4 border-b border-gray-700">
-                <div class="flex flex-col">
-                    <span class="font-bold">Theme</span>
-                    <span class="text-xs text-gray-500">Toggle between dark and light mode</span>
-                </div>
-                <button id="theme-toggle" class="bg-gray-800 border border-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-700">Light Mode</button>
-            </div>
-            <div class="flex justify-between items-center py-4 border-b border-gray-700">
-                <div class="flex flex-col">
-                    <span class="font-bold">Practice Infinite Tries</span>
-                    <span class="text-xs text-gray-500">No guess limit in Practice Mode</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="infinite-toggle">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="mt-8 flex justify-center">
-                <button onclick="closeModal('settings-modal')" class="bg-blue-600 px-10 py-2 rounded-full font-bold">Save</button>
-            </div>
+    <div id="save-warning-modal">
+        <h2>Cashout Success! 💰</h2>
+        <p>Please create a save file now in case something goes wrong with your device storage!</p>
+        <div class="modal-buttons">
+            <button class="btn btn-confirm" id="btn-modal-save">Create Save 💾</button>
+            <button class="btn btn-cancel" id="btn-modal-close-save">Close</button>
         </div>
     </div>
 
-    <div id="archive-modal" class="modal" onclick="closeModal('archive-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-2xl font-black mb-2 text-center uppercase tracking-widest">Archive</h3>
-            <p class="text-center text-xs text-gray-500 mb-6 font-bold">PLAY PREVIOUS DAILY VEXLES</p>
-            <div class="mb-4 flex justify-between items-center px-2">
-                <span id="calendar-month-name" class="font-black text-blue-400 uppercase">May 2026</span>
-                <div class="flex gap-2">
-                    <button class="text-gray-500 hover:text-white"><i class="fas fa-chevron-left"></i></button>
-                    <button class="text-gray-500 hover:text-white"><i class="fas fa-chevron-right"></i></button>
-                </div>
+    <div id="reveal-screen">
+        <h2 class="reveal-title" id="reveal-name">Acquired!</h2>
+        <div id="reveal-list" class="reveal-list">
             </div>
-            <div class="grid grid-cols-7 gap-2 mb-2 text-center text-[10px] font-black text-gray-500">
-                <div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div><div>SUN</div>
-            </div>
-            <div id="calendar-body" class="calendar-grid"></div>
-            <div class="mt-8 flex justify-center">
-                <button onclick="closeModal('archive-modal')" class="bg-gray-800 border border-gray-700 px-10 py-2 rounded-full font-bold">Close</button>
-            </div>
-        </div>
+        <button class="btn-continue" onclick="closeReveal()">Continue</button>
     </div>
 
+    <div id="toast">Message</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <script>
-        const apiKey = ""; 
+        /**
+         * GLOBAL CONSTANTS & CONFIGURATION
+         */
+        const STARTING_BALANCE = 5000;
+        const TILE_SIZE = 0.0002; // Grid size in degrees (~22 meters)
+        const MAX_BUY_DISTANCE = 500; // Maximum purchase distance in meters
+        
+        // Rarity Configuration
+        const RARITIES = [
+            { name: 'Common', chance: 0.50, color: '#87cefa', baseRentPerHour: 0.50, border: '#5dade2' }, 
+            { name: 'Rare', chance: 0.30, color: '#90ee90', baseRentPerHour: 2.50, border: '#58d68d' }, 
+            { name: 'Epic', chance: 0.15, color: '#ee82ee', baseRentPerHour: 10.00, border: '#af7ac5' }, 
+            { name: 'Legendary', chance: 0.05, color: '#f39c12', baseRentPerHour: 50.00, border: '#d35400' } 
+        ];
 
-        const countries = [
-            { name: "Afghanistan", code: "af" }, { name: "Albania", code: "al" }, { name: "Algeria", code: "dz" },
-            { name: "Andorra", code: "ad" }, { name: "Angola", code: "ao" }, { name: "Antigua And Barbuda", code: "ag" },
-            { name: "Argentina", code: "ar" }, { name: "Armenia", code: "am" }, { name: "Australia", code: "au" },
-            { name: "Austria", code: "at" }, { name: "Azerbaijan", code: "az" }, { name: "Bahamas", code: "bs" },
-            { name: "Bahrain", code: "bh" }, { name: "Bangladesh", code: "bd" }, { name: "Barbados", code: "bb" },
-            { name: "Belarus", code: "by" }, { name: "Belgium", code: "be" }, { name: "Belize", code: "bz" },
-            { name: "Benin", code: "bj" }, { name: "Bhutan", code: "bt" }, { name: "Bolivia", code: "bo" },
-            { name: "Bosnia And Herzegovina", code: "ba" }, { name: "Botswana", code: "bw" }, { name: "Brazil", code: "br" },
-            { name: "Brunei", code: "bn" }, { name: "Bulgaria", code: "bg" }, { name: "Burkina Faso", code: "bf" },
-            { name: "Burundi", code: "bi" }, { name: "Cambodia", code: "kh" }, { name: "Cameroon", code: "cm" },
-            { name: "Canada", code: "ca" }, { name: "Cape Verde", code: "cv" }, { name: "Central African Republic", code: "cf" },
-            { name: "Chad", code: "td" }, { name: "Chile", code: "cl" }, { name: "China", code: "cn" },
-            { name: "Colombia", code: "co" }, { name: "Comoros", code: "km" }, { name: "Congo", code: "cg" },
-            { name: "Costa Rica", code: "cr" }, { name: "Croatia", code: "hr" }, { name: "Cuba", code: "cu" },
-            { name: "Cyprus", code: "cy" }, { name: "Czech Republic", code: "cz" }, { name: "Denmark", code: "dk" },
-            { name: "Djibouti", code: "dj" }, { name: "Dominica", code: "dm" }, { name: "Dominican Republic", code: "do" },
-            { name: "Ecuador", code: "ec" }, { name: "Egypt", code: "eg" }, { name: "El Salvador", code: "sv" },
-            { name: "Equatorial Guinea", code: "gq" }, { name: "Eritrea", code: "er" }, { name: "Estonia", code: "ee" },
-            { name: "Ethiopia", code: "et" }, { name: "Fiji", code: "fj" }, { name: "Finland", code: "fi" },
-            { name: "France", code: "fr" }, { name: "Gabon", code: "ga" }, { name: "Gambia", code: "gm" },
-            { name: "Georgia", code: "ge" }, { name: "Germany", code: "de" }, { name: "Ghana", code: "gh" },
-            { name: "Greece", code: "gr" }, { name: "Grenada", code: "gd" }, { name: "Guatemala", code: "gt" },
-            { name: "Guinea", code: "gn" }, { name: "Guinea Bissau", code: "gw" }, { name: "Guyana", code: "gy" },
-            { name: "Haiti", code: "ht" }, { name: "Honduras", code: "hn" }, { name: "Hungary", code: "hu" },
-            { name: "Iceland", code: "is" }, { name: "India", code: "in" }, { name: "Indonesia", code: "id" },
-            { name: "Iran", code: "ir" }, { name: "Iraq", code: "iq" }, { name: "Ireland", code: "ie" },
-            { name: "Israel", code: "il" }, { name: "Italy", code: "it" }, { name: "Jamaica", code: "jm" },
-            { name: "Japan", code: "jp" }, { name: "Jordan", code: "jo" }, { name: "Kazakhstan", code: "kz" },
-            { name: "Kenya", code: "ke" }, { name: "Kiribati", code: "ki" }, { name: "Kuwait", code: "kw" },
-            { name: "Kyrgyzstan", code: "kg" }, { name: "Laos", code: "la" }, { name: "Latvia", code: "lv" },
-            { name: "Lebanon", code: "lb" }, { name: "Lesotho", code: "ls" }, { name: "Liberia", code: "lr" },
-            { name: "Libya", code: "ly" }, { name: "Liechtenstein", code: "li" }, { name: "Lithuania", code: "lt" },
-            { name: "Luxembourg", code: "lu" }, { name: "Madagascar", code: "mg" }, { name: "Malawi", code: "mw" },
-            { name: "Malaysia", code: "my" }, { name: "Maldives", code: "mv" }, { name: "Mali", code: "ml" },
-            { name: "Malta", code: "mt" }, { name: "Marshall Islands", code: "mh" }, { name: "Mauritania", code: "mr" },
-            { name: "Mauritius", code: "mu" }, { name: "Mexico", code: "mx" }, { name: "Micronesia", code: "fm" },
-            { name: "Moldova", code: "md" }, { name: "Monaco", code: "mc" }, { name: "Mongolia", code: "mn" },
-            { name: "Montenegro", code: "me" }, { name: "Morocco", code: "ma" }, { name: "Mozambique", code: "mz" },
-            { name: "Myanmar", code: "mm" }, { name: "Namibia", code: "na" }, { name: "Nauru", code: "nr" },
-            { name: "Nepal", code: "np" }, { name: "Netherlands", code: "nl" }, { name: "New Zealand", code: "nz" },
-            { name: "Nicaragua", code: "ni" }, { name: "Niger", code: "ne" }, { name: "Nigeria", code: "ng" },
-            { name: "North Korea", code: "kp" }, { name: "North Macedonia", code: "mk" }, { name: "Norway", code: "no" },
-            { name: "Oman", code: "om" }, { name: "Pakistan", code: "pk" }, { name: "Palau", code: "pw" },
-            { name: "Panama", code: "pa" }, { name: "Papua New Guinea", code: "pg" }, { name: "Paraguay", code: "py" },
-            { name: "Peru", code: "pe" }, { name: "Philippines", code: "ph" }, { name: "Poland", code: "pl" },
-            { name: "Portugal", code: "pt" }, { name: "Qatar", code: "qa" }, { name: "Romania", code: "ro" },
-            { name: "Russia", code: "ru" }, { name: "Rwanda", code: "rw" }, { name: "Saint Kitts And Nevis", code: "kn" },
-            { name: "Saint Lucia", code: "lc" }, { name: "Saint Vincent And The Grenadines", code: "vc" }, { name: "Samoa", code: "ws" },
-            { name: "San Marino", code: "sm" }, { name: "Sao Tome And Principe", code: "st" }, { name: "Saudi Arabia", code: "sa" },
-            { name: "Senegal", code: "sn" }, { name: "Serbia", code: "rs" }, { name: "Seychelles", code: "sc" },
-            { name: "Sierra Leone", code: "sl" }, { name: "Singapore", code: "sg" }, { name: "Slovakia", code: "sk" },
-            { name: "Slovenia", code: "si" }, { name: "Solomon Islands", code: "sb" }, { name: "Somalia", code: "so" },
-            { name: "South Africa", code: "za" }, { name: "South Korea", code: "kr" }, { name: "South Sudan", code: "ss" },
-            { name: "Spain", code: "es" }, { name: "Sri Lanka", code: "lk" }, { name: "Sudan", code: "sd" },
-            { name: "Suriname", code: "sr" }, { name: "Sweden", code: "se" }, { name: "Switzerland", code: "ch" },
-            { name: "Syria", code: "sy" }, { name: "Taiwan", code: "tw" }, { name: "Tajikistan", code: "tj" },
-            { name: "Tanzania", code: "tz" }, { name: "Thailand", code: "th" }, { name: "Togo", code: "tg" },
-            { name: "Tonga", code: "to" }, { name: "Trinidad And Tobago", code: "tt" }, { name: "Tunisia", code: "tn" },
-            { name: "Turkey", code: "tr" }, { name: "Turkmenistan", code: "tm" }, { name: "Tuvalu", code: "tv" },
-            { name: "Uganda", code: "ug" }, { name: "Ukraine", code: "ua" }, { name: "United Arab Emirates", code: "ae" },
-            { name: "United Kingdom", code: "gb" }, { name: "United States", code: "us" }, { name: "Uruguay", code: "uy" },
-            { name: "Uzbekistan", code: "uz" }, { name: "Vanuatu", code: "vu" }, { name: "Vatican City", code: "va" },
-            { name: "Venezuela", code: "ve" }, { name: "Vietnam", code: "vn" }, { name: "Yemen", code: "ye" },
-            { name: "Zambia", code: "zm" }, { name: "Zimbabwe", code: "zw" }
-        ].sort((a, b) => a.name.localeCompare(b.name));
+        const MS_PER_HOUR = 1000 * 60 * 60;
+        
+        // Encryption Key for Save Files
+        const ENCRYPTION_KEY = "EarthTycoonSecureSaveV1";
 
-        let currentMode = 'home'; 
-        let targetCountry = null;
-        let guesses = [];
-        let maxGuesses = 6;
-        let gameActive = false;
-        let targetImageData = null;
-        let infiniteMode = false;
-        let dailyDateKey = "2026-05-02";
-        let activeAutocompleteIndex = -1;
-        let filteredCountriesList = [];
+        /**
+         * GAME STATE MANAGEMENT
+         */
+        let gameState = {
+            balance: STARTING_BALANCE,
+            ownedTiles: {}, 
+            lastRentClaimTime: Date.now(),
+            totalRentGenerated: 0
+        };
 
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const analysisCanvas = document.createElement('canvas');
-        analysisCanvas.width = 300;
-        analysisCanvas.height = 200;
-        const actx = analysisCanvas.getContext('2d', { willReadFrequently: true });
+        let map;
+        let playerMarker;
+        let playerCircle;
+        let currentPos = { lat: 0, lng: 0 };
+        let buyModeActive = false;
+        let initialZoomDone = false;
+        
+        let highlightLayer = L.layerGroup(); 
+        let ownedLayer = L.layerGroup();     
+        let customClusterLayer = L.layerGroup(); // For zoomed out pins
 
-        // --- GLOBAL STATS LOGIC ---
-        function getStats() {
-            const defaultStats = {
-                gamesPlayed: 0,
-                gamesWon: 0,
-                maxStreak: 0,
-                distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-                countryFrequency: {} 
-            };
-            return JSON.parse(localStorage.getItem('vexle-global-stats') || JSON.stringify(defaultStats));
+        let selectedTiles = []; 
+
+        /**
+         * ENCRYPTION LOGIC
+         */
+        function encryptData(data) {
+            const str = JSON.stringify(data);
+            let result = "";
+            for (let i = 0; i < str.length; i++) {
+                result += String.fromCharCode(str.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+            }
+            return btoa(encodeURIComponent(result));
         }
 
-        function updateGlobalStats(won, tries) {
-            const stats = getStats();
-            stats.gamesPlayed++;
-            if (won) {
-                stats.gamesWon++;
-                if (tries <= 6) {
-                    stats.distribution[tries] = (stats.distribution[tries] || 0) + 1;
+        function decryptData(b64) {
+            const str = decodeURIComponent(atob(b64));
+            let result = "";
+            for (let i = 0; i < str.length; i++) {
+                result += String.fromCharCode(str.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+            }
+            return JSON.parse(result);
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('earthTycoonEncryptedState');
+            if (saved) {
+                try {
+                    const parsed = decryptData(saved);
+                    gameState = { ...gameState, ...parsed };
+                } catch (e) {
+                    console.error("Error loading encrypted save file", e);
+                    const oldSaved = localStorage.getItem('earthTycoonState');
+                    if (oldSaved) {
+                        gameState = { ...gameState, ...JSON.parse(oldSaved) };
+                        saveGame(); 
+                    }
                 }
-            }
-            
-            // Track how often each country was guessed
-            guesses.forEach(g => {
-                stats.countryFrequency[g.code] = (stats.countryFrequency[g.code] || 0) + 1;
-            });
-
-            const streakData = getStreak();
-            if (streakData.count > stats.maxStreak) {
-                stats.maxStreak = streakData.count;
-            }
-
-            localStorage.setItem('vexle-global-stats', JSON.stringify(stats));
-        }
-
-        function populateProfile() {
-            const stats = getStats();
-            const streakData = getStreak();
-            
-            document.getElementById('stat-played').textContent = stats.gamesPlayed;
-            const winPct = stats.gamesPlayed > 0 ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0;
-            document.getElementById('stat-winpct').textContent = winPct;
-            document.getElementById('stat-streak').textContent = streakData.count;
-            document.getElementById('stat-maxstreak').textContent = stats.maxStreak;
-
-            const distContainer = document.getElementById('guess-distribution');
-            distContainer.innerHTML = '';
-            
-            const maxVal = Math.max(...Object.values(stats.distribution), 1);
-            
-            for (let i = 1; i <= 6; i++) {
-                const count = stats.distribution[i] || 0;
-                const widthPct = Math.max((count / maxVal) * 100, 7);
-                
-                const row = document.createElement('div');
-                row.className = 'dist-row';
-                row.innerHTML = `
-                    <span class="w-4 text-xs font-bold">${i}</span>
-                    <div class="flex-grow">
-                        <div class="dist-bar" style="width: ${widthPct}%">${count}</div>
-                    </div>
-                `;
-                distContainer.appendChild(row);
-            }
-
-            // Country Frequency section
-            const countryStatsContainer = document.getElementById('country-guess-stats');
-            countryStatsContainer.innerHTML = '';
-            
-            const freqEntries = Object.entries(stats.countryFrequency || {})
-                .sort((a, b) => b[1] - a[1]) // Sort by frequency descending
-                .slice(0, 15); // Show top 15 most guessed
-
-            if (freqEntries.length > 0) {
-                const mostGuessed = freqEntries[0];
-                const mostGuessedCountry = countries.find(c => c.code === mostGuessed[0]);
-                
-                const header = document.createElement('div');
-                header.className = 'mb-4 p-3 bg-gray-800/50 border-l-4 border-blue-500 rounded-r-lg';
-                header.innerHTML = `
-                    <p class="text-xs font-black uppercase text-gray-500 mb-1 tracking-widest">Global Guess Report</p>
-                    <p class="text-sm font-bold text-gray-200 italic">In ${stats.gamesPlayed} games, you've guessed ${mostGuessedCountry?.name || '...'} ${mostGuessed[1]} times!</p>
-                `;
-                countryStatsContainer.appendChild(header);
-
-                const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar';
-                
-                freqEntries.forEach(([code, count]) => {
-                    const country = countries.find(c => c.code === code);
-                    const item = document.createElement('div');
-                    item.className = 'flex items-center justify-between bg-gray-800/30 p-2 rounded border border-gray-700/50';
-                    item.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <img src="https://flagcdn.com/w40/${code}.png" class="w-6 h-4 object-cover rounded-sm shadow">
-                            <span class="text-xs font-bold text-gray-300">${country ? country.name : code}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] uppercase font-black text-gray-500">Times:</span>
-                            <span class="text-xs font-black text-blue-400">${count}</span>
-                        </div>
-                    `;
-                    grid.appendChild(item);
-                });
-                countryStatsContainer.appendChild(grid);
             } else {
-                 countryStatsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No guess data available yet.</p>';
+                saveGame();
             }
         }
 
-        function exportSave() {
-            const saveData = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('vexle-')) {
-                    saveData[key] = localStorage.getItem(key);
-                }
+        function saveGame() {
+            const encrypted = encryptData(gameState);
+            localStorage.setItem('earthTycoonEncryptedState', encrypted);
+        }
+
+        function exportSaveFile() {
+            saveGame(); 
+            const dataStr = localStorage.getItem('earthTycoonEncryptedState');
+            if (!dataStr) {
+                showToast("No save data available to export!");
+                return;
             }
-            const blob = new Blob([JSON.stringify(saveData)], { type: 'application/json' });
+            const blob = new Blob([dataStr], { type: "text/plain" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `vexle_save_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `earth_tycoon_save_${Math.floor(Date.now() / 1000)}.enc`;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            showToast("Encrypted save file created! 🔒");
         }
 
-        function importSave(input) {
-            const file = input.files[0];
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
             if (!file) return;
+
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = function(e) {
                 try {
-                    const data = JSON.parse(e.target.result);
-                    Object.keys(data).forEach(key => {
-                        if (key.startsWith('vexle-')) {
-                            localStorage.setItem(key, data[key]);
-                        }
-                    });
-                    location.reload();
+                    const contents = e.target.result;
+                    const parsedData = decryptData(contents);
+                    
+                    if (parsedData && typeof parsedData.balance === 'number') {
+                        gameState = parsedData;
+                        saveGame();
+                        updateUI();
+                        renderOwnedTiles();
+                        renderClusters();
+                        showToast("Save file loaded successfully! 📂");
+                    } else {
+                        throw new Error("Invalid save structure");
+                    }
                 } catch (err) {
-                    console.error("Failed to import save", err);
+                    console.error("Load failed:", err);
+                    showToast("Failed to load save file! File might be corrupted or tampered with. ❌");
                 }
+                document.getElementById('file-input').value = "";
             };
             reader.readAsText(file);
         }
 
-        // --- STREAK & DATA LOGIC ---
-        function getStreak() {
-            return JSON.parse(localStorage.getItem('vexle-streak') || '{"count": 0, "lastWin": null}');
-        }
-
-        function updateStreak(won) {
-            const data = getStreak();
-            const today = new Date().toISOString().split('T')[0];
-            if (won) {
-                if (data.lastWin === today) return data.count; 
-                const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toISOString().split('T')[0];
-                if (data.lastWin === yesterdayStr || data.lastWin === null) {
-                    data.count++;
-                } else {
-                    data.count = 1;
-                }
-                data.lastWin = today;
-            } else {
-                data.count = 0;
-            }
-            localStorage.setItem('vexle-streak', JSON.stringify(data));
-            return data.count;
-        }
-
-        function refreshStreakDisplay() {
-            const data = getStreak();
-            const today = new Date().toISOString().split('T')[0];
-            const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-            if (data.lastWin !== today && data.lastWin !== yesterdayStr && data.lastWin !== null) {
-                data.count = 0;
-                localStorage.setItem('vexle-streak', JSON.stringify(data));
-            }
-            document.getElementById('streak-count-home').textContent = data.count;
-            document.getElementById('streak-count-game').textContent = data.count;
-            if (data.count > 0) document.getElementById('streak-badge-game').classList.remove('hidden');
-            else document.getElementById('streak-badge-game').classList.add('hidden');
-        }
-
-        // --- CALENDAR LOGIC ---
-        function initCalendar() {
-            const grid = document.getElementById('calendar-body');
-            grid.innerHTML = '';
-            const currentDay = 2; 
-            for(let i=1; i<=31; i++) {
-                const dayEl = document.createElement('div');
-                dayEl.className = 'calendar-day';
-                dayEl.textContent = i;
-                if (i > currentDay) {
-                    dayEl.classList.add('future');
-                } else {
-                    const dateKey = `2026-05-${i.toString().padStart(2, '0')}`;
-                    const status = localStorage.getItem(`vexle-daily-${dateKey}-status`);
-                    if (status === 'won') dayEl.classList.add('won');
-                    else if (status === 'lost') dayEl.classList.add('lost');
-                    dayEl.onclick = () => {
-                        closeModal('archive-modal');
-                        startArchiveGame(dateKey, i);
-                    };
-                }
-                grid.appendChild(dayEl);
-            }
-        }
-
-        async function startArchiveGame(dateKey, dayNum) {
-            currentMode = 'archive';
-            dailyDateKey = dateKey;
-            document.getElementById('home-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            
-            const dailyInfoEl = document.getElementById('daily-info');
-            const gameInfoSubEl = document.getElementById('game-info-sub');
-            if (dailyInfoEl) dailyInfoEl.textContent = `May ${dayNum}, 2026 - Day ${dayNum}`;
-            if (gameInfoSubEl) gameInfoSubEl.textContent = "ARCHIVE CHALLENGE";
-            
-            const seed = parseInt(dateKey.replace(/-/g, ''));
-            const rand = mulberry32(seed);
-            targetCountry = countries[Math.floor(rand() * countries.length)];
-            resetGameUI();
-            
-            const status = localStorage.getItem(`vexle-daily-${dateKey}-status`);
-            if (status) {
-                const data = JSON.parse(localStorage.getItem(`vexle-daily-${dateKey}-data`) || '[]');
-                await loadTargetImageData();
-                for (const gCode of data) {
-                    const gObj = countries.find(c => c.code === gCode);
-                    const pct = await processPixels(gObj);
-                    renderGuessRow(gObj, pct);
-                }
-                endGame(status === 'won', true);
-            } else {
-                await loadTargetImageData();
-            }
-        }
-
-        async function callGemini(prompt) {
-            const systemPrompt = "You are a geography expert. Help a user guessing a flag by giving a subtle hint about the country without naming it. Keep it under 2 sentences in English.";
-            try {
-                let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        systemInstruction: { parts: [{ text: systemPrompt }] }
-                    })
-                });
-                if (!response.ok) throw new Error("API call failed");
-                const data = await response.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't find a hint right now.";
-            } catch (error) {
-                return "Error loading hint.";
-            }
-        }
-
-        async function getGeminiHint() {
-            if (!gameActive || !targetCountry) return;
-            const hintBox = document.getElementById('ai-hint-box');
-            const hintText = document.getElementById('ai-hint-text');
-            const hintBtn = document.getElementById('hint-btn');
-            hintBtn.disabled = true;
-            hintBox.style.display = 'block';
-            hintText.textContent = "Asking Gemini...";
-            const hint = await callGemini(`Give me a hint for ${targetCountry.name}. Don't mention the name.`);
-            hintText.textContent = hint;
-            hintBtn.style.display = 'none';
-        }
-
-        // --- EXAMPLES LOGIC ---
-        const examples = [
-            { country: "Hungary", code: "hu", pct: "22.0%", desc: "The flag of Hungary has a 22.0% overlap with the hidden flag." },
-            { country: "Italy", code: "it", pct: "66.5%", desc: "Closer! The flag of Italy has a similarity of 66.5% with the solution." },
-            { country: "Mali", code: "ml", pct: "99.9%", desc: "Getting there! The flag of Mali only has a slight difference from the hidden flag." },
-            { country: "Senegal", code: "sn", pct: "100.0%", desc: "Congratulations! The solution is Senegal." }
-        ];
-        let currentExampleIndex = 0;
-
-        function updateExampleUI() {
-            const ex = examples[currentExampleIndex];
-            document.querySelectorAll('.example-image-el').forEach(img => {
-                img.src = (currentExampleIndex === 3) ? "https://flagcdn.com/w320/sn.png" : generateMockBase64(currentExampleIndex);
-            });
-            document.querySelectorAll('.example-row-name-text').forEach(t => t.textContent = ex.country);
-            document.querySelectorAll('.example-row-pct-text').forEach(t => t.textContent = ex.pct);
-            document.querySelectorAll('.example-row-flag-el').forEach(f => f.src = `https://flagcdn.com/w40/${ex.code}.png`);
-            document.querySelectorAll('.example-desc-text').forEach(d => d.textContent = ex.desc);
-            document.querySelectorAll('.example-step-text').forEach(el => el.textContent = `Guess #${currentExampleIndex + 1}`);
-        }
-
-        function generateMockBase64(stage) {
-            const tCanvas = document.createElement('canvas');
-            tCanvas.width = 300; tCanvas.height = 200;
-            const tCtx = tCanvas.getContext('2d');
-            tCtx.fillStyle = '#1e1e1e';
-            tCtx.fillRect(0,0,300,200);
-            if(stage === 0) {
-                tCtx.fillStyle = '#c60b1e'; tCtx.fillRect(0,0,300,66);
-                tCtx.fillStyle = '#008751'; tCtx.fillRect(0,134,300,66);
-                tCtx.fillStyle = '#1e1e1e'; tCtx.fillRect(0,0,200,200);
-                tCtx.fillStyle = '#00853f'; tCtx.fillRect(0, 134, 100, 66); 
-                tCtx.fillStyle = '#e31b23'; tCtx.fillRect(200, 0, 100, 66); 
-            } else if (stage === 1) {
-                tCtx.fillStyle = '#008c45'; tCtx.fillRect(0,0,100,200); 
-                tCtx.fillStyle = '#cd212a'; tCtx.fillRect(200,0,100,200); 
-                tCtx.fillStyle = '#1e1e1e';
-                tCtx.beginPath();
-                tCtx.moveTo(150, 70); tCtx.lineTo(165, 120); tCtx.lineTo(210, 120); tCtx.lineTo(170, 150);
-                tCtx.lineTo(185, 200); tCtx.lineTo(150, 170); tCtx.lineTo(115, 200);
-                tCtx.lineTo(130, 150); tCtx.lineTo(90, 120); tCtx.lineTo(135, 120);
-                tCtx.fill();
-            } else if (stage === 2) {
-                tCtx.fillStyle = '#14b53a'; tCtx.fillRect(0,0,100,200); 
-                tCtx.fillStyle = '#fcd116'; tCtx.fillRect(100,0,100,200); 
-                tCtx.fillStyle = '#ce1126'; tCtx.fillRect(200,0,100,200); 
-            }
-            return tCanvas.toDataURL();
-        }
-
-        function changeExample(dir) {
-            currentExampleIndex = (currentExampleIndex + dir + examples.length) % examples.length;
-            updateExampleUI();
-        }
-
-        // --- CORE GAME LOGIC ---
-
-        function goHome() {
-            document.getElementById('home-screen').classList.remove('hidden');
-            document.getElementById('game-screen').classList.add('hidden');
-            refreshStreakDisplay();
-            checkDailyAvailability();
-            currentMode = 'home';
-        }
-
-        function openModal(id) { 
-            document.getElementById(id).style.display = 'flex'; 
-            if (id === 'archive-modal') initCalendar();
-            if (id === 'profile-modal') populateProfile();
-        }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        function checkDailyAvailability() {
-            const today = new Date().toISOString().split('T')[0];
-            const status = localStorage.getItem(`vexle-daily-${today}-status`);
-            const btn = document.getElementById('daily-play-btn');
-            const statusText = document.getElementById('daily-status');
-            if (status) {
-                btn.textContent = "View Result";
-                statusText.textContent = status === 'won' ? "SOLVED! ✅" : "FAILED! ❌";
-                statusText.className = status === 'won' ? "mb-4 text-sm font-bold text-green-500" : "mb-4 text-sm font-bold text-red-500";
-            } else {
-                btn.textContent = "Play Now";
-                statusText.textContent = "Ready for today!";
-                statusText.className = "mb-4 text-sm font-semibold text-blue-400";
-            }
-        }
-
-        function resetGameUI() {
-            guesses = [];
-            gameActive = true;
-            document.getElementById('country-input').value = '';
-            document.getElementById('country-input').disabled = false;
-            document.getElementById('guess-btn').disabled = false;
-            document.getElementById('result-message').classList.add('hidden');
-            document.getElementById('input-area').classList.remove('hidden');
-            document.getElementById('start-msg').classList.remove('hidden');
-            document.getElementById('ai-hint-box').style.display = 'none';
-            document.getElementById('hint-btn').style.display = 'none';
-            document.getElementById('hint-btn').disabled = false;
-            document.getElementById('guesses-container').innerHTML = '';
-            
-            infiniteMode = (currentMode === 'practice' && document.getElementById('infinite-toggle').checked) || currentMode === 'archive';
-            
-            for(let i=0; i<6; i++) {
-                document.getElementById('guesses-container').innerHTML += `<div class="guess-row empty" id="guess-row-${i}"></div>`;
-            }
-            
-            if (!infiniteMode) {
-                maxGuesses = 6;
-            }
-            
-            ctx.fillStyle = '#1e1e1e';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        async function startGame(mode) {
-            currentMode = mode;
-            const today = new Date().toISOString().split('T')[0];
-            dailyDateKey = today;
-            if (mode === 'daily') {
-                const status = localStorage.getItem(`vexle-daily-${today}-status`);
-                if (status) {
-                    startDailyAlreadyPlayed();
-                    return;
-                }
-            }
-            document.getElementById('home-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            resetGameUI();
-            
-            const dailyInfoEl = document.getElementById('daily-info');
-            const gameInfoSubEl = document.getElementById('game-info-sub');
-            
-            if (mode === 'daily') {
-                if (dailyInfoEl) dailyInfoEl.textContent = `May 2, 2026 - Day 2`;
-                if (gameInfoSubEl) gameInfoSubEl.textContent = "DAILY CHALLENGE";
-                targetCountry = countries[125]; 
-            } else if (mode === 'archive') {
-            } else {
-                if (dailyInfoEl) dailyInfoEl.textContent = `Practice Mode`;
-                if (gameInfoSubEl) gameInfoSubEl.textContent = "UNLIMITED TRAINING";
-                targetCountry = countries[Math.floor(Math.random() * countries.length)];
-            }
-            await loadTargetImageData();
-        }
-
-        async function startDailyAlreadyPlayed() {
-            const today = new Date().toISOString().split('T')[0];
-            const data = JSON.parse(localStorage.getItem(`vexle-daily-${today}-data`) || '[]');
-            const status = localStorage.getItem(`vexle-daily-${today}-status`);
-            document.getElementById('home-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            resetGameUI();
-            
-            document.getElementById('start-msg').classList.add('hidden');
-            
-            const dailyInfoEl = document.getElementById('daily-info');
-            const gameInfoSubEl = document.getElementById('game-info-sub');
-            if (dailyInfoEl) dailyInfoEl.textContent = `May 2, 2026 - Day 2`;
-            if (gameInfoSubEl) gameInfoSubEl.textContent = "DAILY CHALLENGE";
-            
-            targetCountry = countries[125];
-            await loadTargetImageData();
-            for (const gCode of data) {
-                const gObj = countries.find(c => c.code === gCode);
-                const pct = await processPixels(gObj);
-                renderGuessRow(gObj, pct);
-            }
-            endGame(status === 'won', true);
-        }
-
-        async function loadTargetImageData() {
-            document.getElementById('loading-overlay').classList.remove('hidden');
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.onload = () => {
-                actx.clearRect(0, 0, 300, 200);
-                actx.drawImage(img, 0, 0, 300, 200);
-                targetImageData = actx.getImageData(0, 0, 300, 200);
-                document.getElementById('loading-overlay').classList.add('hidden');
+        /**
+         * MATH & GRID LOGIC
+         */
+        
+        function getGridCoords(lat, lng) {
+            return {
+                x: Math.floor(lng / TILE_SIZE),
+                y: Math.floor(lat / TILE_SIZE)
             };
-            img.src = `https://flagcdn.com/w320/${targetCountry.code}.png`;
         }
 
-        async function handleGuess() {
-            if (!gameActive) return;
-            let inputVal = document.getElementById('country-input').value.trim();
-            
-            if (filteredCountriesList.length > 0) {
-                const idx = activeAutocompleteIndex >= 0 ? activeAutocompleteIndex : 0;
-                inputVal = filteredCountriesList[idx].name;
+        function getTileBounds(x, y) {
+            return [
+                [y * TILE_SIZE, x * TILE_SIZE],
+                [(y + 1) * TILE_SIZE, (x + 1) * TILE_SIZE]
+            ];
+        }
+
+        function calculateTilePrice(x, y) {
+            let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            let noise = n - Math.floor(n);
+            let macro = (Math.sin(x / 30) + Math.cos(y / 30)) / 2; 
+            let basePrice = 150;
+            let multiplier = 1 + (macro + 1) * 2; 
+            let finalPrice = Math.floor((basePrice * multiplier) + (noise * 100));
+            return Math.max(50, Math.min(2000, finalPrice));
+        }
+
+        function rollRarity() {
+            const roll = Math.random();
+            let cumulativeChance = 0;
+            for (let rarity of RARITIES) {
+                cumulativeChance += rarity.chance;
+                if (roll <= cumulativeChance) {
+                    return rarity;
+                }
+            }
+            return RARITIES[0]; 
+        }
+
+        /**
+         * INITIALIZATION & MAP SETUP
+         */
+        function initGame() {
+            loadGame();
+            updateUI();
+
+            // Start completely zoomed out
+            map = L.map('map', {
+                zoomControl: false, 
+                doubleClickZoom: false
+            }).setView([20, 0], 2); 
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 20
+            }).addTo(map);
+
+            ownedLayer.addTo(map);
+            highlightLayer.addTo(map);
+            customClusterLayer.addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(updatePlayerPosition, handleLocationError, {
+                    enableHighAccuracy: true,
+                    maximumAge: 10000,
+                    timeout: 5000
+                });
+            } else {
+                showToast("Geolocation is not supported.");
             }
 
-            const guessObj = countries.find(c => c.name.toLowerCase() === inputVal.toLowerCase());
-            if (!guessObj) {
-                document.getElementById('country-input').classList.add('shake');
-                setTimeout(() => document.getElementById('country-input').classList.remove('shake'), 300);
+            map.on('click', handleMapClick);
+
+            // Handle zoom events to show/hide layers and labels
+            map.on('zoomend', function() {
+                if (map.getZoom() < 16) {
+                    map.getContainer().classList.add('zoomed-out');
+                    if (map.hasLayer(ownedLayer)) map.removeLayer(ownedLayer);
+                    if (!map.hasLayer(customClusterLayer)) map.addLayer(customClusterLayer);
+                    renderClusters();
+                } else {
+                    map.getContainer().classList.remove('zoomed-out');
+                    if (!map.hasLayer(ownedLayer)) map.addLayer(ownedLayer);
+                    if (map.hasLayer(customClusterLayer)) map.removeLayer(customClusterLayer);
+                }
+            });
+
+            renderOwnedTiles();
+            renderClusters();
+            
+            setInterval(calculateRent, 1000); 
+            calculateRent(); 
+
+            document.getElementById('btn-manual-save').addEventListener('click', exportSaveFile);
+            document.getElementById('btn-manual-load').addEventListener('click', function() {
+                document.getElementById('file-input').click();
+            });
+            document.getElementById('file-input').addEventListener('change', handleFileUpload);
+            
+            document.getElementById('btn-modal-close-save').addEventListener('click', function() {
+                document.getElementById('save-warning-modal').style.display = 'none';
+            });
+            document.getElementById('btn-modal-save').addEventListener('click', function() {
+                exportSaveFile();
+                document.getElementById('save-warning-modal').style.display = 'none';
+            });
+        }
+
+        function updatePlayerPosition(position) {
+            currentPos = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+
+            const playerLatLng = [currentPos.lat, currentPos.lng];
+
+            if (!initialZoomDone) {
+                initialZoomDone = true;
+                
+                playerMarker = L.circleMarker(playerLatLng, {
+                    color: '#2980b9',
+                    fillColor: '#3498db',
+                    fillOpacity: 1,
+                    radius: 8,
+                    weight: 3
+                }).addTo(map);
+
+                playerCircle = L.circle(playerLatLng, {
+                    radius: MAX_BUY_DISTANCE,
+                    color: '#2980b9',
+                    weight: 1.5,
+                    fillColor: '#3498db',
+                    fillOpacity: 0.04,
+                    dashArray: '6, 6'
+                }).addTo(map);
+
+                // Slow zoom into the player's location
+                map.flyTo(playerLatLng, 17, {
+                    animate: true,
+                    duration: 4.0 
+                });
+            } else {
+                if (playerMarker) playerMarker.setLatLng(playerLatLng);
+                if (playerCircle) playerCircle.setLatLng(playerLatLng);
+            }
+        }
+
+        function handleLocationError(error) {
+            console.warn(`Geolocation error: ${error.message}`);
+        }
+
+        /**
+         * CLUSTERING LOGIC FOR ZOOMED OUT VIEW
+         */
+        function renderClusters() {
+            customClusterLayer.clearLayers();
+            
+            // Group tiles based on a larger grid to create clusters
+            let clusters = {};
+            let clusterGridSize = 0.02; // Larger degree grid for grouping
+            
+            for (let key in gameState.ownedTiles) {
+                let [x, y] = key.split(',').map(Number);
+                
+                let tileLat = (y + 0.5) * TILE_SIZE;
+                let tileLng = (x + 0.5) * TILE_SIZE;
+                
+                let cx = Math.floor(tileLng / clusterGridSize);
+                let cy = Math.floor(tileLat / clusterGridSize);
+                let cKey = `${cx},${cy}`;
+                
+                if (!clusters[cKey]) {
+                    clusters[cKey] = { latSum: 0, lngSum: 0, count: 0 };
+                }
+                clusters[cKey].latSum += tileLat;
+                clusters[cKey].lngSum += tileLng;
+                clusters[cKey].count++;
+            }
+            
+            for (let cKey in clusters) {
+                let c = clusters[cKey];
+                let avgLat = c.latSum / c.count;
+                let avgLng = c.lngSum / c.count;
+                
+                let iconHtml = `<div style="background:#e74c3c; color:white; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-weight:900; border:3px solid white; box-shadow:0 0 15px rgba(0,0,0,0.6); text-shadow: 1px 1px 2px black;">${c.count}</div>`;
+                
+                if (c.count === 1) {
+                    // Single pin
+                    iconHtml = `<div style="background:#3498db; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.6);"></div>`;
+                }
+                
+                let icon = L.divIcon({
+                    html: iconHtml,
+                    className: 'custom-cluster-icon',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+                
+                L.marker([avgLat, avgLng], {icon: icon}).addTo(customClusterLayer);
+            }
+        }
+
+        /**
+         * BUYING MECHANICS & MULTI-SELECT
+         */
+
+        const btnToggleBuy = document.getElementById('btn-toggle-buy');
+        const btnClaimRent = document.getElementById('btn-claim-rent');
+        const btnCheckout = document.getElementById('btn-checkout');
+
+        btnToggleBuy.addEventListener('click', function() {
+            if (map.getZoom() < 16) {
+                showToast("Please zoom in closer to buy properties! 🔍");
                 return;
             }
-            if (guesses.some(g => g.code === guessObj.code)) return;
-            document.getElementById('loading-overlay').classList.remove('hidden');
-            document.getElementById('start-msg').classList.add('hidden');
-            const pct = await processPixels(guessObj);
-            renderGuessRow(guessObj, pct);
-            document.getElementById('loading-overlay').classList.add('hidden');
-            document.getElementById('country-input').value = '';
-            closeAllLists();
-            if (guesses.length >= 3 && guessObj.code !== targetCountry.code) {
-                document.getElementById('hint-btn').classList.remove('hidden');
-            }
-            if (guessObj.code === targetCountry.code) endGame(true);
-            else if (!infiniteMode && guesses.length >= 6) endGame(false);
-        }
 
-        function renderGuessRow(guessObj, pct) {
-            const index = guesses.length;
-            guesses.push(guessObj);
-            let row;
-            if (index < 6) {
-                row = document.getElementById(`guess-row-${index}`);
-                row.classList.remove('empty');
-            } else {
-                row = document.createElement('div');
-                row.className = "guess-row animate-slide";
-                document.getElementById('guesses-container').appendChild(row);
-            }
-            row.innerHTML = `
-                <div class="flex items-center gap-3 w-1/2 text-white">
-                    <img class="guess-flag" src="https://flagcdn.com/w40/${guessObj.code}.png">
-                    <span class="font-bold truncate text-sm">${guessObj.name}</span>
-                </div>
-                <span class="guess-percent">${pct}%</span>
-            `;
-        }
-
-        async function processPixels(guessObj) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous";
-                img.onload = () => {
-                    actx.clearRect(0, 0, 300, 200);
-                    actx.drawImage(img, 0, 0, 300, 200);
-                    const guessData = actx.getImageData(0, 0, 300, 200);
-                    const currentData = ctx.getImageData(0, 0, 300, 200);
-                    let matches = 0;
-                    for (let i = 0; i < targetImageData.data.length; i += 4) {
-                        const dist = Math.sqrt(
-                            Math.pow(targetImageData.data[i] - guessData.data[i], 2) +
-                            Math.pow(targetImageData.data[i+1] - guessData.data[i+1], 2) +
-                            Math.pow(targetImageData.data[i+2] - guessData.data[i+2], 2)
-                        );
-                        if (dist < 45 || guessObj.code === targetCountry.code) {
-                            matches++;
-                            currentData.data[i] = targetImageData.data[i];
-                            currentData.data[i+1] = targetImageData.data[i+1];
-                            currentData.data[i+2] = targetImageData.data[i+2];
-                            currentData.data[i+3] = 255;
-                        }
-                    }
-                    ctx.putImageData(currentData, 0, 0);
-                    resolve(guessObj.code === targetCountry.code ? 100 : ((matches / 60000) * 100).toFixed(1));
-                };
-                img.src = `https://flagcdn.com/w320/${guessObj.code}.png`;
-            });
-        }
-
-        function endGame(won, alreadySaved = false) {
-            gameActive = false;
-            document.getElementById('input-area').classList.add('hidden');
-            document.getElementById('result-message').classList.remove('hidden');
-            document.getElementById('hint-btn').classList.add('hidden');
-            document.getElementById('ai-hint-box').style.display = 'none';
-            const title = document.getElementById('result-title');
-            const desc = document.getElementById('result-desc');
-            if (won) {
-                title.textContent = "YOU WON! 🏆";
-                title.className = "text-2xl font-black mb-2 text-green-500 animate-pulse";
-                desc.innerHTML = `Great job! The flag was <b>${targetCountry.name}</b>.`;
-                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            } else {
-                title.textContent = "GAME OVER 🚩";
-                title.className = "text-2xl font-black mb-2 text-red-500";
-                desc.innerHTML = `The flag was <b>${targetCountry.name}</b>.`;
-                const img = new Image(); img.crossOrigin = "Anonymous";
-                img.onload = () => { actx.drawImage(img, 0, 0, 300, 200); ctx.putImageData(actx.getImageData(0,0,300,200),0,0); };
-                img.src = `https://flagcdn.com/w320/${targetCountry.code}.png`;
-            }
-            
-            if (!alreadySaved) {
-                // Now including all modes in global statistics
-                updateGlobalStats(won, guesses.length);
+            buyModeActive = !buyModeActive;
+            if (buyModeActive) {
+                this.classList.add('active');
+                this.innerText = "Cancel Mode";
+                map.getContainer().style.cursor = 'crosshair';
                 
-                if (currentMode === 'daily') {
-                    const streak = updateStreak(won);
-                    localStorage.setItem(`vexle-daily-${dailyDateKey}-status`, won ? 'won' : 'lost');
-                    localStorage.setItem(`vexle-daily-${dailyDateKey}-data`, JSON.stringify(guesses.map(g => g.code)));
-                    document.getElementById('streak-update-msg').classList.remove('hidden');
-                    document.getElementById('final-streak-count').textContent = streak;
-                } else {
-                    const streak = getStreak().count;
-                    document.getElementById('streak-update-msg').classList.remove('hidden');
-                    document.getElementById('final-streak-count').textContent = streak;
-                }
+                btnClaimRent.style.display = 'none';
+                btnCheckout.style.display = 'block';
+                
+                showToast("Tap tiles inside your 500m radius circle to select.");
             } else {
-                const streak = getStreak().count;
-                document.getElementById('streak-update-msg').classList.remove('hidden');
-                document.getElementById('final-streak-count').textContent = streak;
+                this.classList.remove('active');
+                this.innerText = "Buy Property";
+                map.getContainer().style.cursor = '';
+                
+                btnClaimRent.style.display = 'block';
+                btnCheckout.style.display = 'none';
+                
+                selectedTiles = [];
+                renderHighlights();
+                updateCheckoutButton();
             }
-            refreshStreakDisplay();
-        }
-
-        document.getElementById('theme-toggle').onclick = () => {
-            const isLight = document.body.classList.toggle('light-mode');
-            document.getElementById('theme-toggle').textContent = isLight ? "Dark Mode" : "Light Mode";
-        };
-
-        const inputElement = document.getElementById('country-input');
-        inputElement.addEventListener("input", function() {
-            const val = this.value; closeAllLists();
-            if (!val) return;
-            const listDiv = document.getElementById("autocomplete-list");
-            listDiv.classList.remove('hidden');
-            
-            filteredCountriesList = countries.filter(c => c.name.toLowerCase().includes(val.toLowerCase())).slice(0, 6);
-            activeAutocompleteIndex = -1; 
-
-            filteredCountriesList.forEach((c, index) => {
-                const div = document.createElement("div");
-                div.className = "autocomplete-item text-sm";
-                div.id = "autocomplete-item-" + index;
-                div.innerHTML = `<img src="https://flagcdn.com/w40/${c.code}.png" class="w-6 h-4 object-cover rounded-sm"><span>${c.name}</span>`;
-                div.onclick = () => { 
-                    inputElement.value = c.name; 
-                    handleGuess(); 
-                };
-                listDiv.appendChild(div);
-            });
         });
 
-        function updateAutocompleteSelection() {
-            const items = document.querySelectorAll('.autocomplete-item');
-            items.forEach((item, idx) => {
-                if (idx === activeAutocompleteIndex) item.classList.add('active');
-                else item.classList.remove('active');
-            });
-            if (activeAutocompleteIndex >= 0 && filteredCountriesList[activeAutocompleteIndex]) {
-                inputElement.value = filteredCountriesList[activeAutocompleteIndex].name;
+        function handleMapClick(e) {
+            if (!buyModeActive) return;
+
+            if (currentPos.lat === 0 && currentPos.lng === 0) {
+                showToast("Waiting for GPS location fixes... 🛰️");
+                return;
+            }
+
+            const playerLatLng = L.latLng(currentPos.lat, currentPos.lng);
+            const clickDistance = playerLatLng.distanceTo(e.latlng);
+
+            if (clickDistance > MAX_BUY_DISTANCE) {
+                showToast("Too far away! You can only buy within 500m. 🏃‍♂️");
+                return;
+            }
+
+            const coords = getGridCoords(e.latlng.lat, e.latlng.lng);
+            const tileKey = `${coords.x},${coords.y}`;
+
+            if (gameState.ownedTiles[tileKey]) {
+                showToast("This property is already owned!");
+                return;
+            }
+
+            const existingIndex = selectedTiles.findIndex(t => t.key === tileKey);
+            
+            if (existingIndex >= 0) {
+                selectedTiles.splice(existingIndex, 1);
+            } else {
+                const price = calculateTilePrice(coords.x, coords.y);
+                selectedTiles.push({
+                    x: coords.x,
+                    y: coords.y,
+                    key: tileKey,
+                    price: price
+                });
+            }
+
+            renderHighlights();
+            updateCheckoutButton();
+        }
+
+        function renderHighlights() {
+            highlightLayer.clearLayers();
+            for (let tile of selectedTiles) {
+                const bounds = getTileBounds(tile.x, tile.y);
+                L.rectangle(bounds, {
+                    color: '#f1c40f',
+                    weight: 3,
+                    fillColor: '#f1c40f',
+                    fillOpacity: 0.4
+                }).addTo(highlightLayer);
             }
         }
 
-        function closeAllLists() { 
-            const list = document.getElementById("autocomplete-list");
-            list.innerHTML = ''; 
-            list.classList.add('hidden'); 
-            filteredCountriesList = [];
-            activeAutocompleteIndex = -1;
+        function updateCheckoutButton() {
+            let total = 0;
+            for (let t of selectedTiles) total += t.price;
+            
+            if (selectedTiles.length > 0) {
+                btnCheckout.disabled = false;
+                btnCheckout.innerText = `Checkout $${total.toLocaleString()}`;
+            } else {
+                btnCheckout.disabled = true;
+                btnCheckout.innerText = `Checkout (0)`;
+            }
         }
 
-        document.getElementById('guess-btn').onclick = handleGuess;
-        
-        inputElement.onkeydown = (e) => { 
-            if (e.key === "Enter") {
-                handleGuess(); 
-            } else if (e.key === "Tab") {
-                if (filteredCountriesList.length > 0) {
-                    e.preventDefault();
-                    activeAutocompleteIndex = (activeAutocompleteIndex + 1) % filteredCountriesList.length;
-                    updateAutocompleteSelection();
+        btnCheckout.addEventListener('click', function() {
+            if (selectedTiles.length === 0) return;
+            
+            let total = 0;
+            for (let t of selectedTiles) total += t.price;
+
+            document.getElementById('purchase-count').innerText = `Selected Tiles: ${selectedTiles.length}`;
+            document.getElementById('purchase-price').innerText = `Total Price: $${total.toLocaleString()}`;
+            document.getElementById('purchase-modal').style.display = 'block';
+        });
+
+        document.getElementById('btn-cancel-buy').addEventListener('click', function() {
+            document.getElementById('purchase-modal').style.display = 'none';
+        });
+
+        document.getElementById('btn-confirm-buy').addEventListener('click', function() {
+            let total = 0;
+            for (let t of selectedTiles) total += t.price;
+
+            if (gameState.balance < total) {
+                showToast("Not enough money for all selected tiles!");
+                document.getElementById('purchase-modal').style.display = 'none';
+                return;
+            }
+
+            gameState.balance -= total;
+            
+            let acquiredTiles = [];
+
+            for (let tile of selectedTiles) {
+                const rarity = rollRarity();
+                
+                const priceMultiplier = tile.price / 150; 
+                const variance = 1 + ((Math.random() * 0.6) - 0.3); 
+                const finalRentPerHour = rarity.baseRentPerHour * priceMultiplier * variance;
+                
+                gameState.ownedTiles[tile.key] = {
+                    rarity: rarity.name,
+                    color: rarity.color,
+                    border: rarity.border,
+                    rentPerHour: finalRentPerHour,
+                    purchasedAt: Date.now()
+                };
+
+                acquiredTiles.push({
+                    name: rarity.name,
+                    color: rarity.color,
+                    border: rarity.border,
+                    rentPerHour: finalRentPerHour
+                });
+            }
+
+            saveGame();
+            updateUI();
+            
+            document.getElementById('purchase-modal').style.display = 'none';
+            
+            showAnimatedRevealScreen(acquiredTiles);
+            
+            selectedTiles = [];
+            renderHighlights();
+            updateCheckoutButton();
+            renderOwnedTiles();
+            renderClusters();
+        });
+
+        /**
+         * RENT SYSTEM & REWARDS
+         */
+
+        function grantFreeProperties(amount) {
+            if (currentPos.lat === 0 && currentPos.lng === 0) return []; 
+            
+            let granted = [];
+            const playerGridCoords = getGridCoords(currentPos.lat, currentPos.lng);
+            const playerLatLng = L.latLng(currentPos.lat, currentPos.lng);
+            
+            let attempts = 0;
+            while (granted.length < amount && attempts < 1000) {
+                attempts++;
+                let offsetX = Math.floor(Math.random() * 45) - 22;
+                let offsetY = Math.floor(Math.random() * 45) - 22;
+                
+                let checkX = playerGridCoords.x + offsetX;
+                let checkY = playerGridCoords.y + offsetY;
+                let key = `${checkX},${checkY}`;
+                
+                if (gameState.ownedTiles[key]) continue; 
+                
+                let bounds = getTileBounds(checkX, checkY);
+                let centerLat = (bounds[0][0] + bounds[1][0]) / 2;
+                let centerLng = (bounds[0][1] + bounds[1][1]) / 2;
+                
+                if (playerLatLng.distanceTo(L.latLng(centerLat, centerLng)) <= MAX_BUY_DISTANCE) {
+                    const price = calculateTilePrice(checkX, checkY);
+                    const rarity = rollRarity();
+                    const priceMultiplier = price / 150; 
+                    const variance = 1 + ((Math.random() * 0.6) - 0.3); 
+                    const finalRentPerHour = rarity.baseRentPerHour * priceMultiplier * variance;
+                    
+                    gameState.ownedTiles[key] = {
+                        rarity: rarity.name,
+                        color: rarity.color,
+                        border: rarity.border,
+                        rentPerHour: finalRentPerHour,
+                        purchasedAt: Date.now()
+                    };
+                    
+                    granted.push({
+                        name: `🎁 FREE ${rarity.name}`,
+                        color: rarity.color,
+                        border: rarity.border,
+                        rentPerHour: finalRentPerHour
+                    });
                 }
             }
-        };
+            return granted;
+        }
+        
+        function calculateRent() {
+            const now = new Date();
+            const lastClaim = new Date(gameState.lastRentClaimTime);
+            
+            // Realtime exact pending rent math
+            const timePassedMs = now.getTime() - lastClaim.getTime();
+            
+            let totalHourlyRent = 0;
+            for (let key in gameState.ownedTiles) {
+                totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
+            }
 
-        function mulberry32(a) {
-            return function() {
-                var t = a += 0x6D2B79F5;
-                t = Math.imul(t ^ t >>> 15, t | 1);
-                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            const exactPendingRent = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
+            const rentDisplay = document.getElementById('rent-display');
+            rentDisplay.innerText = `$${exactPendingRent.toFixed(4)}`;
+
+            const claimBtn = document.getElementById('btn-claim-rent');
+
+            // Check if we crossed a full clock hour boundary since last claim
+            const canClaim = (now.getHours() !== lastClaim.getHours()) || 
+                             (now.getDate() !== lastClaim.getDate()) || 
+                             (timePassedMs >= MS_PER_HOUR);
+
+            if (canClaim && totalHourlyRent > 0) {
+                claimBtn.disabled = false;
+                claimBtn.innerText = 'Claim Rent';
+                rentDisplay.style.color = '#e67e22'; 
+            } else {
+                claimBtn.disabled = true;
+                rentDisplay.style.color = '#2c3e50';
+                
+                // Calculate countdown to the NEXT full clock hour (e.g., 14:00, 15:00)
+                let nextHour = new Date(now);
+                nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+                
+                let msUntilNextHour = nextHour.getTime() - now.getTime();
+                let totalSeconds = Math.floor(msUntilNextHour / 1000);
+                
+                const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+                
+                if (totalHourlyRent > 0) {
+                    claimBtn.innerText = `Claim Rent (${minutes}:${seconds})`;
+                } else {
+                    claimBtn.innerText = `Claim Rent`;
+                }
             }
         }
 
-        window.onload = () => {
-            refreshStreakDisplay();
-            checkDailyAvailability();
-            updateExampleUI();
+        document.getElementById('btn-claim-rent').addEventListener('click', function() {
+            const now = new Date();
+            const lastClaim = new Date(gameState.lastRentClaimTime);
+            const timePassedMs = now.getTime() - lastClaim.getTime();
+            
+            const canClaim = (now.getHours() !== lastClaim.getHours()) || 
+                             (now.getDate() !== lastClaim.getDate()) || 
+                             (timePassedMs >= MS_PER_HOUR);
+
+            if (canClaim) {
+                let totalHourlyRent = 0;
+                for (let key in gameState.ownedTiles) {
+                    totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
+                }
+
+                // Grant 2 Free Properties per full clock hour passed
+                let hoursPassed = Math.floor(timePassedMs / MS_PER_HOUR);
+                if (hoursPassed < 1) hoursPassed = 1; // Minimum 1 hour passed if clock ticked over
+                
+                const newlyGranted = grantFreeProperties(hoursPassed * 2);
+
+                const rentEarned = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
+                
+                gameState.balance += rentEarned;
+                gameState.totalRentGenerated += rentEarned;
+                
+                // Reset to exact current timestamp
+                gameState.lastRentClaimTime = now.getTime();
+
+                saveGame();
+                updateUI();
+                calculateRent();
+                renderOwnedTiles(); 
+                renderClusters();
+                
+                if (newlyGranted.length > 0) {
+                    setTimeout(() => {
+                        showAnimatedRevealScreen(newlyGranted);
+                    }, 400);
+                }
+                
+                document.getElementById('save-warning-modal').style.display = 'block';
+            }
+        });
+
+        /**
+         * VISUAL RENDERING
+         */
+
+        function renderOwnedTiles() {
+            ownedLayer.clearLayers();
+            for (let key in gameState.ownedTiles) {
+                const [xStr, yStr] = key.split(',');
+                const x = parseInt(xStr);
+                const y = parseInt(yStr);
+                const tileData = gameState.ownedTiles[key];
+
+                const bounds = getTileBounds(x, y);
+                const rect = L.rectangle(bounds, {
+                    color: tileData.border || '#333',
+                    weight: 2,
+                    fillColor: tileData.color,        
+                    fillOpacity: 0.6
+                });
+
+                rect.bindTooltip(`$${tileData.rentPerHour.toFixed(2)}/h`, {
+                    permanent: true,
+                    direction: 'center',
+                    className: 'rent-label'
+                });
+
+                rect.addTo(ownedLayer);
+            }
         }
+
+        /**
+         * UI HELPERS
+         */
+        
+        function updateUI() {
+            document.getElementById('balance-display').innerText = `$${gameState.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('property-count').innerText = Object.keys(gameState.ownedTiles).length;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.style.opacity = 1;
+            setTimeout(() => {
+                toast.style.opacity = 0;
+            }, 3000);
+        }
+
+        function showAnimatedRevealScreen(acquiredTiles) {
+            const screen = document.getElementById('reveal-screen');
+            const listContainer = document.getElementById('reveal-list');
+            const title = document.getElementById('reveal-name');
+            
+            listContainer.innerHTML = ''; 
+            
+            title.innerText = `${acquiredTiles.length} Tile${acquiredTiles.length > 1 ? 's' : ''} Acquired!`;
+            
+            acquiredTiles.forEach((tile, index) => {
+                const delay = index * 0.15; 
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'reveal-item';
+                itemDiv.style.borderLeftColor = tile.border;
+                itemDiv.style.animationDelay = `${delay}s`;
+                
+                itemDiv.innerHTML = `
+                    <span class="reveal-item-name" style="color: ${tile.color};">${tile.name}</span>
+                    <span class="reveal-item-rent">+$${tile.rentPerHour.toFixed(2)} / hr</span>
+                `;
+                
+                listContainer.appendChild(itemDiv);
+            });
+
+            screen.style.display = 'flex';
+        }
+
+        function closeReveal() {
+            document.getElementById('reveal-screen').style.display = 'none';
+        }
+
+        window.onload = initGame;
+
     </script>
 </body>
 </html>
