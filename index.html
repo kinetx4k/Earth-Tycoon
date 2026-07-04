@@ -186,6 +186,21 @@
             color: #27ae60;
         }
 
+        .yield-bonus {
+            font-size: 0.55rem;
+            color: #e67e22;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .yield-final {
+            font-size: 1.15rem;
+            font-weight: 900;
+            color: #27ae60;
+            text-align: center;
+        }
+
         #bottom-bar {
             bottom: 30px;
             left: 50%;
@@ -521,7 +536,8 @@
         </div>
         <div class="stat-box">
             <span class="stat-label">$/Hour</span>
-            <span class="stat-value money" id="hourly-yield-display">$0.00</span>
+            <span class="yield-bonus" id="hourly-bonus-display"></span>
+            <span class="yield-final" id="hourly-yield-display">$0.00</span>
         </div>
         <div class="stat-box">
             <span class="stat-label">Properties</span>
@@ -1218,12 +1234,26 @@
             
             const timePassedMs = now.getTime() - lastClaim.getTime();
             
-            let totalHourlyRent = 0;
+            let baseHourlyRent = 0;
             for (let key in gameState.ownedTiles) {
-                totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
+                baseHourlyRent += gameState.ownedTiles[key].rentPerHour;
             }
 
-            document.getElementById('hourly-yield-display').innerText = `$${totalHourlyRent.toFixed(2)}`;
+            // Bonus: +1% per property owned
+            const propertyCount = Object.keys(gameState.ownedTiles).length;
+            const bonusPercent = propertyCount;
+            const bonusMultiplier = 1 + (bonusPercent / 100);
+            const totalHourlyRent = baseHourlyRent * bonusMultiplier;
+
+            // Update yield display with bonus info
+            const bonusDisplay = document.getElementById('hourly-bonus-display');
+            const yieldDisplay = document.getElementById('hourly-yield-display');
+            if (propertyCount > 0) {
+                bonusDisplay.innerText = `Base $${baseHourlyRent.toFixed(2)} + ${bonusPercent}%`;
+            } else {
+                bonusDisplay.innerText = '';
+            }
+            yieldDisplay.innerText = `$${totalHourlyRent.toFixed(2)}`;
 
             const exactPendingRent = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
             const rentDisplay = document.getElementById('rent-display');
@@ -1365,10 +1395,12 @@
             const lastClaim = new Date(gameState.lastRentClaimTime);
             const timePassedMs = now.getTime() - lastClaim.getTime();
             
-            let totalHourlyRent = 0;
+            let baseRent = 0;
             for (let key in gameState.ownedTiles) {
-                totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
+                baseRent += gameState.ownedTiles[key].rentPerHour;
             }
+            const propCount = Object.keys(gameState.ownedTiles).length;
+            const totalHourlyRent = baseRent * (1 + propCount / 100);
 
             const rentEarned = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
             
