@@ -944,6 +944,12 @@
             let basePrice = 150;
             let multiplier = 1 + (macro + 1) * 2; 
             let finalPrice = Math.floor(((basePrice * multiplier) + (noise * 100)) * 0.4);
+            
+            // Slightly more expensive based on owned properties
+            const ownedCount = Object.keys(gameState.ownedTiles).length;
+            const priceScale = 1 + (ownedCount * 0.01); // +1% per owned property
+            finalPrice = Math.floor(finalPrice * priceScale);
+            
             return Math.max(20, Math.min(800, finalPrice));
         }
 
