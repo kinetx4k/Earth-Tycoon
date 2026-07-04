@@ -20,7 +20,113 @@
             height: 100%;
             width: 100%;
             overflow: hidden;
-            background-color: #f0f0f1;
+            background-color: #f0f0f0;
+            transition: background-color 0.5s ease;
+        }
+
+        body.dark-mode {
+            background-color: #1a1a2e;
+        }
+
+        body.dark-mode .hud {
+            background: rgba(30, 30, 50, 0.92);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        body.dark-mode .stat-label {
+            color: #aab;
+        }
+
+        body.dark-mode .stat-value {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .btn-claim:disabled {
+            background: #555;
+            color: #888;
+        }
+
+        body.dark-mode #purchase-modal, body.dark-mode #save-warning-modal {
+            background: #2a2a3e;
+        }
+
+        body.dark-mode #purchase-modal h2, body.dark-mode #save-warning-modal h2 {
+            color: #eee;
+        }
+
+        body.dark-mode #purchase-modal p, body.dark-mode #save-warning-modal p {
+            color: #ccc;
+        }
+
+        body.dark-mode .btn-continue {
+            background: #3a3a50;
+            color: #eee;
+        }
+
+        body.dark-mode .toast {
+            background: rgba(255,255,255,0.9);
+            color: #111;
+        }
+
+        body.dark-mode #gift-hud {
+            box-shadow: 0 0 15px rgba(155, 89, 182, 0.4);
+        }
+
+        body.dark-mode #btn-manual-save, body.dark-mode #btn-manual-load {
+            background: #3a3a50 !important;
+        }
+
+        /* Theme Toggle Button */
+        #theme-toggle {
+            position: absolute;
+            top: 25px;
+            right: 15px;
+            z-index: 1500;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, #f39c12, #f1c40f);
+            box-shadow: 0 2px 10px rgba(243, 156, 18, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            overflow: hidden;
+        }
+
+        #theme-toggle:hover {
+            transform: scale(1.1) rotate(15deg);
+        }
+
+        #theme-toggle:active {
+            transform: scale(0.9);
+        }
+
+        #theme-toggle .icon {
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            display: inline-block;
+        }
+
+        #theme-toggle.dark .icon {
+            transform: rotate(360deg) scale(0.8);
+        }
+
+        #theme-toggle.dark {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            box-shadow: 0 2px 10px rgba(52, 152, 219, 0.5);
+        }
+
+        @keyframes themeSpin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(0.5); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .theme-spinning .icon {
+            animation: themeSpin 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
 
         #map {
@@ -341,6 +447,10 @@
 </head>
 <body>
 
+    <button id="theme-toggle" class="light" onclick="toggleTheme()">
+        <span class="icon">☀️</span>
+    </button>
+
     <div id="top-bar" class="hud">
         <div class="stat-box">
             <span class="stat-label">Balance</span>
@@ -422,12 +532,80 @@
         const TILE_SIZE = 0.0002; // Grid size in degrees (~22 meters)
         const MAX_BUY_DISTANCE = 500; // Maximum purchase distance in meters
         
-        // Rarity Configuration
+        // Rarity Configuration - rentMultiplier scales with location value
         const RARITIES = [
-            { name: 'Common', chance: 0.50, color: '#87cefa', baseRentPerHour: 0.50, border: '#5dade2' }, 
-            { name: 'Rare', chance: 0.30, color: '#90ee90', baseRentPerHour: 2.50, border: '#58d68d' }, 
-            { name: 'Epic', chance: 0.15, color: '#ee82ee', baseRentPerHour: 10.00, border: '#af7ac5' }, 
-            { name: 'Legendary', chance: 0.05, color: '#f39c12', baseRentPerHour: 50.00, border: '#d35400' } 
+            { name: 'Common', chance: 0.50, color: '#87cefa', rentMultiplier: 1.0, border: '#5dade2' }, 
+            { name: 'Rare', chance: 0.30, color: '#90ee90', rentMultiplier: 1.5, border: '#58d68d' }, 
+            { name: 'Epic', chance: 0.15, color: '#ee82ee', rentMultiplier: 2.5, border: '#af7ac5' }, 
+            { name: 'Legendary', chance: 0.05, color: '#f39c12', rentMultiplier: 5.0, border: '#d35400' } 
+        ];
+
+        // Major city hotspots for location-based pricing [lat, lng, radius_deg, intensity]
+        const CITY_HOTSPOTS = [
+            { lat: 40.71, lng: -74.01, r: 3.0, intensity: 25 },   // New York
+            { lat: 51.51, lng: -0.13, r: 2.5, intensity: 20 },    // London
+            { lat: 35.68, lng: 139.69, r: 3.0, intensity: 22 },   // Tokyo
+            { lat: 31.23, lng: 121.47, r: 2.5, intensity: 18 },   // Shanghai
+            { lat: 48.86, lng: 2.35, r: 2.0, intensity: 18 },     // Paris
+            { lat: -33.87, lng: 151.21, r: 2.5, intensity: 15 },  // Sydney
+            { lat: 25.20, lng: 55.27, r: 2.0, intensity: 16 },    // Dubai
+            { lat: 1.35, lng: 103.82, r: 1.5, intensity: 17 },    // Singapore
+            { lat: 19.08, lng: 72.88, r: 3.0, intensity: 14 },    // Mumbai
+            { lat: -23.55, lng: -46.63, r: 3.0, intensity: 13 },  // São Paulo
+            { lat: 52.52, lng: 13.41, r: 2.0, intensity: 16 },    // Berlin
+            { lat: 48.14, lng: 11.58, r: 1.8, intensity: 15 },    // Munich
+            { lat: 55.76, lng: 37.62, r: 2.5, intensity: 14 },    // Moscow
+            { lat: 39.90, lng: 116.40, r: 2.5, intensity: 18 },   // Beijing
+            { lat: 34.05, lng: -118.24, r: 3.0, intensity: 20 },  // Los Angeles
+            { lat: 41.88, lng: -87.63, r: 2.5, intensity: 16 },   // Chicago
+            { lat: 22.32, lng: 114.17, r: 1.5, intensity: 16 },   // Hong Kong
+            { lat: 37.57, lng: 126.98, r: 2.0, intensity: 15 },   // Seoul
+            { lat: 28.61, lng: 77.21, r: 2.5, intensity: 13 },    // Delhi
+            { lat: -22.91, lng: -43.17, r: 2.5, intensity: 12 },  // Rio
+            { lat: 59.93, lng: 30.32, r: 1.5, intensity: 12 },    // St. Petersburg
+            { lat: 45.46, lng: 9.19, r: 1.2, intensity: 14 },     // Milan
+            { lat: 40.42, lng: -3.70, r: 1.5, intensity: 12 },    // Madrid
+            { lat: 41.39, lng: 2.17, r: 1.2, intensity: 13 },     // Barcelona
+            { lat: 35.18, lng: 33.38, r: 1.0, intensity: 10 },    // Nicosia
+            { lat: 13.76, lng: 100.50, r: 2.0, intensity: 12 },   // Bangkok
+            { lat: 3.14, lng: 101.69, r: 1.5, intensity: 13 },    // KL
+            { lat: -6.21, lng: 106.85, r: 2.5, intensity: 11 },   // Jakarta
+            { lat: 6.52, lng: 3.38, r: 2.0, intensity: 8 },       // Lagos
+            { lat: 9.01, lng: 7.49, r: 1.0, intensity: 7 },       // Abuja
+            { lat: -1.29, lng: 36.82, r: 1.5, intensity: 7 },     // Nairobi
+            { lat: 30.04, lng: 31.24, r: 2.0, intensity: 9 },     // Cairo
+            { lat: 33.89, lng: 35.50, r: 1.0, intensity: 9 },     // Beirut
+            { lat: 41.01, lng: 28.98, r: 2.0, intensity: 11 },    // Istanbul
+            { lat: 50.45, lng: 30.52, r: 1.5, intensity: 9 },     // Kyiv
+            { lat: 47.60, lng: -122.33, r: 2.0, intensity: 17 },  // Seattle
+            { lat: 37.77, lng: -122.42, r: 2.0, intensity: 19 },  // San Francisco
+            { lat: 25.76, lng: -80.19, r: 1.5, intensity: 12 },   // Miami
+            { lat: 29.76, lng: -95.37, r: 2.0, intensity: 12 },   // Houston
+            { lat: 33.45, lng: -112.07, r: 1.5, intensity: 10 },  // Phoenix
+            { lat: 36.17, lng: -115.14, r: 1.5, intensity: 11 },  // Las Vegas
+            { lat: 53.35, lng: -6.26, r: 1.2, intensity: 12 },    // Dublin
+            { lat: 59.33, lng: 18.07, r: 1.0, intensity: 13 },    // Stockholm
+            { lat: 60.17, lng: 24.94, r: 1.0, intensity: 11 },    // Helsinki
+            { lat: 55.68, lng: 12.57, r: 1.0, intensity: 12 },    // Copenhagen
+            { lat: 50.85, lng: 4.35, r: 1.0, intensity: 13 },     // Brussels
+            { lat: 52.37, lng: 4.90, r: 1.0, intensity: 13 },     // Amsterdam
+            { lat: 47.38, lng: 8.54, r: 1.0, intensity: 14 },     // Zurich
+            { lat: 48.21, lng: 16.37, r: 1.0, intensity: 11 },    // Vienna
+            { lat: 42.70, lng: 23.32, r: 1.0, intensity: 8 },     // Sofia
+            { lat: 44.43, lng: 26.10, r: 1.0, intensity: 8 },     // Bucharest
+            { lat: 37.98, lng: 23.73, r: 1.0, intensity: 10 },    // Athens
+            { lat: 38.72, lng: -9.14, r: 1.0, intensity: 10 },    // Lisbon
+            { lat: 50.08, lng: 14.44, r: 1.0, intensity: 11 },    // Prague
+            { lat: 50.06, lng: 19.94, r: 1.2, intensity: 9 },     // Krakow
+            { lat: 59.91, lng: 30.30, r: 2.0, intensity: 11 },    // St. Petersburg
+            { lat: 36.85, lng: 10.18, r: 1.0, intensity: 7 },     // Tunis
+            { lat: 14.60, lng: 120.98, r: 1.5, intensity: 10 },   // Manila
+            { lat: 21.03, lng: 105.85, r: 1.5, intensity: 9 },    // Hanoi
+            { lat: 10.82, lng: 106.63, r: 1.5, intensity: 9 },    // Ho Chi Minh
+            { lat: -37.81, lng: 144.96, r: 2.0, intensity: 14 },  // Melbourne
+            { lat: -43.53, lng: 172.64, r: 1.5, intensity: 9 },   // Christchurch
+            { lat: 35.17, lng: 136.91, r: 2.0, intensity: 12 },   // Nagoya
+            { lat: 43.06, lng: 141.35, r: 2.0, intensity: 11 },   // Sapporo
         ];
 
         const MS_PER_HOUR = 1000 * 60 * 60;
@@ -459,6 +637,9 @@
         let highlightLayer = L.layerGroup(); 
         let ownedLayer = L.layerGroup();     
         let customClusterLayer = L.layerGroup(); 
+        let lightTileLayer;
+        let darkTileLayer;
+        let currentTileLayer;
 
         let selectedTiles = []; 
 
@@ -574,13 +755,99 @@
         }
 
         function calculateTilePrice(x, y) {
-            let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-            let noise = n - Math.floor(n);
-            let macro = (Math.sin(x / 30) + Math.cos(y / 30)) / 2; 
-            let basePrice = 150;
-            let multiplier = 1 + (macro + 1) * 2; 
-            let finalPrice = Math.floor((basePrice * multiplier) + (noise * 100));
-            return Math.max(50, Math.min(2000, finalPrice));
+            // Convert grid coords to lat/lng
+            const tileLat = (y + 0.5) * TILE_SIZE;
+            const tileLng = (x + 0.5) * TILE_SIZE;
+
+            // 1. Base noise for local variation
+            let n1 = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            let noise1 = n1 - Math.floor(n1);
+            
+            let n2 = Math.sin(x * 7.23 + y * 45.17) * 21345.6789;
+            let noise2 = n2 - Math.floor(n2);
+            
+            // Local micro-variation (0.5 - 1.5 range)
+            let localNoise = 0.5 + (noise1 * 0.5 + noise2 * 0.5);
+
+            // 2. Continental/latitude base value
+            // Near equator and mid-latitudes have more development
+            let absLat = Math.abs(tileLat);
+            let latFactor = Math.max(0.3, 1.0 - Math.abs(absLat - 40) / 60);
+            
+            // Continental shelves (land vs ocean rough estimate)
+            let continentBase = (Math.sin(tileLng / 20) * Math.cos(tileLat / 15)) * 0.3 + 0.7;
+
+            // 3. Large-scale regional waves
+            let regional = (
+                Math.sin(tileLng / 8 + 0.5) * Math.cos(tileLat / 6) * 0.5 +
+                Math.sin(tileLng / 15 - 0.3) * Math.sin(tileLat / 12 + 1.2) * 0.3 +
+                Math.cos(tileLng / 5 + tileLat / 7) * 0.2
+            );
+            let regionalFactor = 1.0 + regional; // 0.0 to 2.0
+
+            // 4. City hotspot proximity - exponential decay from known cities
+            let cityBoost = 0;
+            for (let city of CITY_HOTSPOTS) {
+                let dLat = tileLat - city.lat;
+                let dLng = tileLng - city.lng;
+                let dist = Math.sqrt(dLat * dLat + dLng * dLng);
+                if (dist < city.r * 2) {
+                    // Exponential decay from city center
+                    let influence = city.intensity * Math.exp(-dist * dist / (city.r * city.r * 0.5));
+                    cityBoost += influence;
+                }
+            }
+
+            // 5. Combine all factors
+            let basePrice = 8;
+            let price = basePrice + cityBoost + (localNoise * 5) + (latFactor * continentBase * regionalFactor * 15);
+            
+            // Apply some powerto create more spread
+            if (cityBoost > 5) {
+                // Urban areas get extra scaling
+                price = price * (1 + Math.log2(cityBoost) * 0.3);
+            }
+
+            return Math.max(5, Math.floor(price));
+        }
+
+        /**
+         * Get a human-readable location name based on nearby cities
+         */
+        function getLocationLabel(lat, lng) {
+            let closestCity = null;
+            let closestDist = Infinity;
+            for (let city of CITY_HOTSPOTS) {
+                let dLat = lat - city.lat;
+                let dLng = lng - city.lng;
+                let dist = Math.sqrt(dLat * dLat + dLng * dLng);
+                if (dist < city.r && dist < closestDist) {
+                    closestDist = dist;
+                    closestCity = city;
+                }
+            }
+            // Approximate city names from coords (first match within radius)
+            const CITY_NAMES = {
+                'New York': [40.71, -74.01], 'London': [51.51, -0.13], 'Tokyo': [35.68, 139.69],
+                'Shanghai': [31.23, 121.47], 'Paris': [48.86, 2.35], 'Sydney': [-33.87, 151.21],
+                'Dubai': [25.20, 55.27], 'Singapore': [1.35, 103.82], 'Mumbai': [19.08, 72.88],
+                'São Paulo': [-23.55, -46.63], 'Berlin': [52.52, 13.41], 'Munich': [48.14, 11.58],
+                'Moscow': [55.76, 37.62], 'Beijing': [39.90, 116.40], 'Los Angeles': [34.05, -118.24],
+                'Chicago': [41.88, -87.63], 'Hong Kong': [22.32, 114.17], 'Seoul': [37.57, 126.98],
+                'Delhi': [28.61, 77.21], 'Rio de Janeiro': [-22.91, -43.17], 'Istanbul': [41.01, 28.98],
+                'San Francisco': [37.77, -122.42], 'Seattle': [47.60, -122.33], 'Miami': [25.76, -80.19],
+                'Las Vegas': [36.17, -115.14], 'Barcelona': [41.39, 2.17], 'Amsterdam': [52.37, 4.90],
+                'Zurich': [47.38, 8.54], 'Vienna': [48.21, 16.37], 'Prague': [50.08, 14.44],
+                'Bangkok': [13.76, 100.50], 'Melbourne': [-37.81, 144.96], 'Stockholm': [59.33, 18.07]
+            };
+            if (closestCity) {
+                for (let name in CITY_NAMES) {
+                    let cn = CITY_NAMES[name];
+                    let dist = Math.sqrt((closestCity.lat - cn[0])**2 + (closestCity.lng - cn[1])**2);
+                    if (dist < 1.0) return name;
+                }
+            }
+            return null;
         }
 
         function rollRarity() {
@@ -599,6 +866,7 @@
          * INITIALIZATION & MAP SETUP
          */
         function initGame() {
+            loadTheme();
             loadGame();
             updateUI();
 
@@ -607,10 +875,24 @@
                 doubleClickZoom: false
             }).setView([20, 0], 2); 
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            lightTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 20
-            }).addTo(map);
+            });
+            darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 20
+            });
+
+            // Set initial tile layer based on theme
+            const savedTheme = localStorage.getItem('earthTycoonTheme');
+            if (savedTheme === 'dark') {
+                darkTileLayer.addTo(map);
+                currentTileLayer = darkTileLayer;
+            } else {
+                lightTileLayer.addTo(map);
+                currentTileLayer = lightTileLayer;
+            }
 
             ownedLayer.addTo(map);
             highlightLayer.addTo(map);
@@ -894,9 +1176,11 @@
             for (let tile of selectedTiles) {
                 const rarity = rollRarity();
                 
-                const priceMultiplier = tile.price / 150; 
-                const variance = 1 + ((Math.random() * 0.6) - 0.3); 
-                const finalRentPerHour = rarity.baseRentPerHour * priceMultiplier * variance;
+                // Rent = tilePrice × rarity multiplier × rent yield rate × variance
+                // Rent yield ~3% of property value per hour base, scaled by rarity
+                const rentYield = 0.03; 
+                const variance = 1 + ((Math.random() * 0.4) - 0.2); // ±20%
+                const finalRentPerHour = tile.price * rentYield * rarity.rentMultiplier * variance;
                 
                 gameState.ownedTiles[tile.key] = {
                     rarity: rarity.name,
@@ -910,7 +1194,8 @@
                     name: rarity.name,
                     color: rarity.color,
                     border: rarity.border,
-                    rentPerHour: finalRentPerHour
+                    rentPerHour: finalRentPerHour,
+                    price: tile.price
                 });
             }
 
@@ -958,9 +1243,9 @@
                 if (playerLatLng.distanceTo(L.latLng(centerLat, centerLng)) <= MAX_BUY_DISTANCE) {
                     const price = calculateTilePrice(checkX, checkY);
                     const rarity = rollRarity();
-                    const priceMultiplier = price / 150; 
-                    const variance = 1 + ((Math.random() * 0.6) - 0.3); 
-                    const finalRentPerHour = rarity.baseRentPerHour * priceMultiplier * variance;
+                    const rentYield = 0.03;
+                    const variance = 1 + ((Math.random() * 0.4) - 0.2); 
+                    const finalRentPerHour = price * rentYield * rarity.rentMultiplier * variance;
                     
                     gameState.ownedTiles[key] = {
                         rarity: rarity.name,
@@ -1077,16 +1362,16 @@
                 rentDisplay.style.color = '#2c3e50';
             }
 
-            // Gift Generation Logic (Every 2 Hours = 1 Gift)
+            // Gift Generation Logic (Every 1 Hour = 1 Gift)
             if (!gameState.lastGiftHourTime) gameState.lastGiftHourTime = now.getTime();
             if (!gameState.lastGiftDayString) gameState.lastGiftDayString = now.toLocaleDateString();
             if (gameState.pendingGifts === undefined) gameState.pendingGifts = 0;
 
             let timeSinceGiftHourMs = now.getTime() - gameState.lastGiftHourTime;
-            if (timeSinceGiftHourMs >= (MS_PER_HOUR * 2)) {
-                let cyclesPassed = Math.floor(timeSinceGiftHourMs / (MS_PER_HOUR * 2));
+            if (timeSinceGiftHourMs >= MS_PER_HOUR) {
+                let cyclesPassed = Math.floor(timeSinceGiftHourMs / MS_PER_HOUR);
                 gameState.pendingGifts += cyclesPassed;
-                gameState.lastGiftHourTime += cyclesPassed * (MS_PER_HOUR * 2);
+                gameState.lastGiftHourTime += cyclesPassed * MS_PER_HOUR;
             }
 
             let currentDayStr = now.toLocaleDateString();
@@ -1111,43 +1396,14 @@
         }
 
         /**
-         * GIFT COUNTDOWN - Shows time remaining until next even-hour gift (every 2 hours)
+         * GIFT COUNTDOWN - Shows time remaining until next full hour gift (every 1 hour)
          */
-        function getNextEvenHour() {
+        function getNextFullHour() {
             const now = new Date();
-            let nextHour = now.getHours();
-            let nextMin = now.getMinutes();
-            let nextSec = now.getSeconds();
-            
-            // Find next even hour (0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22)
-            // If current time is exactly on an even hour and no seconds have passed, use current hour
-            let remainder = (nextMin * 60 + nextSec); // seconds into current hour
-            
-            // Move to next even hour
-            if (nextHour % 2 !== 0) {
-                // Odd hour -> next hour is even
-                nextHour = nextHour + 1;
-            } else {
-                // Even hour -> check if we're past the start (any minutes/seconds in)
-                // Next even hour is 2 hours away if we're already into this even hour
-                // But if it's exactly 00:00:00, the gift should already be available
-                if (remainder > 0) {
-                    nextHour = nextHour + 2;
-                }
-            }
-            
-            // Handle day wrap
-            if (nextHour >= 24) {
-                nextHour = nextHour % 24;
-            }
-            
             const target = new Date(now);
-            target.setHours(nextHour, 0, 0, 0);
             
-            // If target is in the past (shouldn't happen but safety), add 2 hours
-            if (target.getTime() <= now.getTime()) {
-                target.setTime(target.getTime() + 2 * MS_PER_HOUR);
-            }
+            // Move to next full hour
+            target.setHours(target.getHours() + 1, 0, 0, 0);
             
             return target;
         }
@@ -1157,8 +1413,8 @@
             if (!countdownEl) return;
             
             const now = new Date();
-            const nextEvenHour = getNextEvenHour();
-            const diffMs = nextEvenHour.getTime() - now.getTime();
+            const nextHour = getNextFullHour();
+            const diffMs = nextHour.getTime() - now.getTime();
             
             if (diffMs <= 0) {
                 countdownEl.innerText = '🎁 Available!';
@@ -1174,6 +1430,58 @@
             const pad = (n) => String(n).padStart(2, '0');
             countdownEl.innerText = `⏳ ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
             countdownEl.style.color = '#ffffff';
+        }
+
+        /**
+         * DARK MODE / LIGHT MODE TOGGLE
+         */
+        function toggleTheme() {
+            const btn = document.getElementById('theme-toggle');
+            const icon = btn.querySelector('.icon');
+            
+            // Add spin animation
+            btn.classList.add('theme-spinning');
+            
+            setTimeout(() => {
+                if (btn.classList.contains('dark')) {
+                    btn.classList.remove('dark');
+                    btn.classList.add('light');
+                    icon.textContent = '☀️';
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('earthTycoonTheme', 'light');
+                    
+                    // Switch to light tiles
+                    if (currentTileLayer) map.removeLayer(currentTileLayer);
+                    lightTileLayer.addTo(map);
+                    currentTileLayer = lightTileLayer;
+                } else {
+                    btn.classList.remove('light');
+                    btn.classList.add('dark');
+                    icon.textContent = '🌙';
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('earthTycoonTheme', 'dark');
+                    
+                    // Switch to dark tiles
+                    if (currentTileLayer) map.removeLayer(currentTileLayer);
+                    darkTileLayer.addTo(map);
+                    currentTileLayer = darkTileLayer;
+                }
+                
+                setTimeout(() => {
+                    btn.classList.remove('theme-spinning');
+                }, 300);
+            }, 200);
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('earthTycoonTheme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const btn = document.getElementById('theme-toggle');
+                btn.classList.remove('light');
+                btn.classList.add('dark');
+                btn.querySelector('.icon').textContent = '🌙';
+            }
         }
 
             document.getElementById('btn-claim-rent').addEventListener('click', function() {
