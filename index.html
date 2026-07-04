@@ -587,6 +587,20 @@
         <span class="icon">☀️</span>
     </button>
 
+    <button id="settings-btn" style="position:absolute; top:25px; left:15px; z-index:1500; width:44px; height:44px; border-radius:50%; border:none; background:rgba(52,73,94,0.85); color:white; font-size:1.3rem; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.3); transition: transform 0.2s;" onclick="toggleSettings()">⚙️</button>
+
+    <div id="settings-panel" style="display:none; position:absolute; top:75px; left:15px; z-index:2000; background:rgba(30,30,50,0.95); color:white; border-radius:12px; padding:15px; box-shadow:0 5px 20px rgba(0,0,0,0.5); min-width:180px;">
+        <div style="font-weight:800; font-size:0.9rem; margin-bottom:12px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:8px;">⚙️ Settings</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="font-size:0.8rem; font-weight:600;">🌙 Dark Mode</span>
+            <div id="settings-theme-toggle" onclick="toggleTheme()" style="width:40px; height:22px; border-radius:11px; background:#555; cursor:pointer; position:relative; transition: background 0.3s;">
+                <div id="settings-theme-dot" style="width:18px; height:18px; border-radius:50%; background:white; position:absolute; top:2px; left:2px; transition: left 0.3s;"></div>
+            </div>
+        </div>
+        <button onclick="exportSaveFile()" style="width:100%; padding:8px; border:none; border-radius:8px; background:#2980b9; color:white; font-weight:700; font-size:0.78rem; cursor:pointer; margin-bottom:6px;">💾 Save File</button>
+        <button onclick="document.getElementById('file-input').click()" style="width:100%; padding:8px; border:none; border-radius:8px; background:#8e44ad; color:white; font-weight:700; font-size:0.78rem; cursor:pointer;">📂 Load File</button>
+    </div>
+
     <div id="top-bar" class="hud">
         <div class="stat-box">
             <span class="stat-label">Balance</span>
@@ -598,20 +612,16 @@
             <span class="yield-final" id="hourly-yield-display">$0.00</span>
         </div>
         <div class="stat-box">
-            <span class="stat-label">Properties</span>
-            <span class="stat-value" id="property-count">0</span>
-        </div>
-        <div class="stat-box">
             <span class="stat-label">Pending</span>
             <span class="stat-value money" id="rent-display">$0.00</span>
         </div>
-        <div class="stat-box" id="btn-manual-save" style="cursor: pointer; background: #eaedf0; border-radius: 8px; padding: 2px 5px;">
-            <span class="stat-label">Backup</span>
-            <span class="stat-value" style="color: #2980b9; font-size: 0.85rem;">💾 Save</span>
+        <div class="stat-box">
+            <span class="stat-label">Properties</span>
+            <span class="stat-value" id="property-count">0</span>
         </div>
-        <div class="stat-box" id="btn-manual-load" style="cursor: pointer; background: #eaedf0; border-radius: 8px; padding: 2px 5px;">
-            <span class="stat-label">Restore</span>
-            <span class="stat-value" style="color: #8e44ad; font-size: 0.85rem;">📂 Load</span>
+        <div class="stat-box" id="location-display" style="min-width:70px;">
+            <span class="stat-label">Location</span>
+            <span class="stat-value" id="location-text" style="color:#2980b9; font-size:0.85rem;">📍 ...</span>
         </div>
     </div>
 
@@ -989,10 +999,6 @@
             setInterval(calculateRent, 1000); 
             calculateRent(); 
 
-            document.getElementById('btn-manual-save').addEventListener('click', exportSaveFile);
-            document.getElementById('btn-manual-load').addEventListener('click', function() {
-                document.getElementById('file-input').click();
-            });
             document.getElementById('file-input').addEventListener('change', handleFileUpload);
             
             document.getElementById('btn-modal-close-save').addEventListener('click', function() {
@@ -1054,6 +1060,8 @@
 
             if (!initialZoomDone) {
                 initialZoomDone = true;
+                // Reverse geocode for location display
+                updateLocation(newLat, newLng);
                 
                 playerMarker = L.circleMarker(playerLatLng, {
                     color: '#2980b9',
@@ -1512,6 +1520,43 @@
         }
 
         /**
+         * SETTINGS PANEL TOGGLE
+         */
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            // Sync settings toggle
+            const isDark = document.body.classList.contains('dark-mode');
+            const dot = document.getElementById('settings-theme-dot');
+            const toggleBg = document.getElementById('settings-theme-toggle');
+            if (isDark) { dot.style.left = '20px'; toggleBg.style.background = '#3498db'; }
+            else { dot.style.left = '2px'; toggleBg.style.background = '#555'; }
+        }
+
+        /**
+         * REVERSE GEOCODING - Get city name from coordinates
+         */
+        function updateLocation(lat, lng) {
+            const locEl = document.getElementById('location-text');
+            if (!locEl) return;
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`)
+                .then(r => r.json())
+                .then(data => {
+                    const addr = data.address;
+                    const city = addr.city || addr.town || addr.village || addr.municipality || '';
+                    const country = addr.country_code ? addr.country_code.toUpperCase() : '';
+                    if (city) {
+                        locEl.innerText = `📍 ${city}${country ? ', ' + country : ''}`;
+                    } else {
+                        locEl.innerText = `📍 ${lat.toFixed(2)}, ${lng.toFixed(2)}`;
+                    }
+                })
+                .catch(() => {
+                    locEl.innerText = `📍 ${lat.toFixed(2)}, ${lng.toFixed(2)}`;
+                });
+        }
+
+        /**
          * DARK MODE / LIGHT MODE TOGGLE
          */
         function toggleTheme() {
@@ -1560,6 +1605,10 @@
                 btn.classList.remove('light');
                 btn.classList.add('dark');
                 btn.querySelector('.icon').textContent = '🌙';
+                // Sync settings toggle
+                const dot = document.getElementById('settings-theme-dot');
+                const toggleBg = document.getElementById('settings-theme-toggle');
+                if (dot) { dot.style.left = '20px'; toggleBg.style.background = '#3498db'; }
             }
         }
 
