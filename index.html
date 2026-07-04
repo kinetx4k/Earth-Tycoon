@@ -532,7 +532,7 @@
     <div id="top-bar" class="hud">
         <div class="stat-box">
             <span class="stat-label">Balance</span>
-            <span class="stat-value money" id="balance-display">$5,000.00</span>
+            <span class="stat-value money" id="balance-display">$2,500.00</span>
         </div>
         <div class="stat-box">
             <span class="stat-label">$/Hour</span>
@@ -874,7 +874,7 @@
 
             // Gift HUD shows info toast
             document.getElementById('gift-hud').addEventListener('click', function() {
-                showToast(`🎁 Free Properties: ${gameState.freeProperties} (2 every hour)`);
+                showToast(`🎁 Free Properties: ${gameState.freeProperties} (1 every 30min)`);
             });
             
             // Start countdown timer update
@@ -1271,15 +1271,15 @@
                 rentDisplay.style.color = '#2c3e50';
             }
 
-            // Free Property Timer - awards 2 free properties every 1 hour
+            // Free Property Timer - awards 1 free property every 30 minutes
             if (!gameState.lastGiftHourTime) gameState.lastGiftHourTime = now.getTime();
             if (gameState.freeProperties === undefined) gameState.freeProperties = 0;
 
             let timeSinceGiftMs = now.getTime() - gameState.lastGiftHourTime;
-            if (timeSinceGiftMs >= MS_PER_HOUR) {
-                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HOUR);
-                gameState.freeProperties += cyclesPassed * 2;
-                gameState.lastGiftHourTime += cyclesPassed * MS_PER_HOUR;
+            if (timeSinceGiftMs >= MS_PER_HALF_HOUR) {
+                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HALF_HOUR);
+                gameState.freeProperties += cyclesPassed;
+                gameState.lastGiftHourTime += cyclesPassed * MS_PER_HALF_HOUR;
                 saveGame();
             }
 
@@ -1302,14 +1302,23 @@
         }
 
         /**
-         * GIFT COUNTDOWN - Shows time remaining until next full hour gift (every 1 hour)
+         * GIFT COUNTDOWN - Shows time remaining until next half hour gift (every 30 min)
          */
-        function getNextFullHour() {
+        const MS_PER_HALF_HOUR = MS_PER_HOUR / 2;
+
+        function getNextHalfHour() {
             const now = new Date();
             const target = new Date(now);
+            const mins = target.getMinutes();
+            const secs = target.getSeconds();
             
-            // Move to next full hour
-            target.setHours(target.getHours() + 1, 0, 0, 0);
+            if (mins < 30) {
+                // Go to next :30
+                target.setMinutes(30, 0, 0);
+            } else {
+                // Go to next :00 of next hour
+                target.setHours(target.getHours() + 1, 0, 0, 0);
+            }
             
             return target;
         }
@@ -1322,14 +1331,13 @@
             
             // Check if it's time to award free properties immediately
             let timeSinceGiftMs = now.getTime() - gameState.lastGiftHourTime;
-            if (timeSinceGiftMs >= MS_PER_HOUR) {
-                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HOUR);
-                let newFree = cyclesPassed * 2;
-                if (newFree > 0) {
-                    gameState.freeProperties += newFree;
-                    gameState.lastGiftHourTime += cyclesPassed * MS_PER_HOUR;
+            if (timeSinceGiftMs >= MS_PER_HALF_HOUR) {
+                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HALF_HOUR);
+                if (cyclesPassed > 0) {
+                    gameState.freeProperties += cyclesPassed;
+                    gameState.lastGiftHourTime += cyclesPassed * MS_PER_HALF_HOUR;
                     saveGame();
-                    showToast(`🎁 +${newFree} Free Properties!`);
+                    showToast(`🎁 +${cyclesPassed} Free Propert${cyclesPassed > 1 ? 'ies' : 'y'}!`);
                     // Update free badge immediately
                     const freeBadge = document.getElementById('free-badge');
                     if (freeBadge) {
@@ -1343,9 +1351,8 @@
                 }
             }
             
-            // Calculate time remaining until next full hour
-            const target = new Date(now);
-            target.setHours(target.getHours() + 1, 0, 0, 0);
+            // Calculate time remaining until next half hour
+            const target = getNextHalfHour();
             const diffMs = target.getTime() - now.getTime();
             
             if (diffMs <= 0) {
