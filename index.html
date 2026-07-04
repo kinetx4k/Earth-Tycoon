@@ -560,7 +560,7 @@
     <div id="gift-hud" class="hud">
         <span style="font-size: 1.8rem; margin-bottom: 5px;">🎁</span>
         <span id="gift-count" style="font-weight: 900; font-size: 1rem;">0</span>
-        <span id="gift-countdown" style="font-size: 0.65rem; opacity: 0.85; margin-top: 3px;">--:--:--</span>
+        <span style="font-size: 0.55rem; opacity: 0.8; margin-top: 3px;">every 30 min</span>
     </div>
 
     <input type="file" id="file-input" accept=".json,.enc">
@@ -1378,13 +1378,8 @@
         }
 
         function updateGiftCountdown() {
-            const countdownEl = document.getElementById('gift-countdown');
-            if (!countdownEl) return;
-            
-            const now = new Date();
-            
-            // Check if it's time to award free properties immediately
-            let timeSinceGiftMs = now.getTime() - gameState.lastGiftHourTime;
+            // Check every second if it's time to award free properties
+            let timeSinceGiftMs = Date.now() - gameState.lastGiftHourTime;
             if (timeSinceGiftMs >= MS_PER_HALF_HOUR) {
                 let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HALF_HOUR);
                 if (cyclesPassed > 0) {
@@ -1404,25 +1399,6 @@
                     giftHud.style.transform = 'scale(1.05)';
                 }
             }
-            
-            // Calculate time remaining until next half hour
-            const target = getNextHalfHour();
-            const diffMs = target.getTime() - now.getTime();
-            
-            if (diffMs <= 0) {
-                countdownEl.innerText = '🎁 Available!';
-                countdownEl.style.color = '#f1c40f';
-                return;
-            }
-            
-            const totalSeconds = Math.floor(diffMs / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            
-            const pad = (n) => String(n).padStart(2, '0');
-            countdownEl.innerText = `⏳ ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-            countdownEl.style.color = '#ffffff';
         }
 
         /**
