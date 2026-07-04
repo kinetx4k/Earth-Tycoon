@@ -472,6 +472,40 @@
             background: transparent;
         }
 
+        /* Cheapest Property Button */
+        #btn-cheapest {
+            position: absolute;
+            bottom: 95px;
+            left: 15px;
+            z-index: 1000;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+            color: white;
+            font-weight: 800;
+            font-size: 0.78rem;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(230, 126, 34, 0.5);
+            transition: transform 0.2s, background 0.3s;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        #btn-cheapest:hover {
+            transform: scale(1.05);
+        }
+
+        #btn-cheapest:active {
+            transform: scale(0.95);
+        }
+
+        #btn-cheapest .cheapest-icon {
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 2px;
+        }
+
     </style>
 </head>
 <body>
@@ -520,6 +554,8 @@
         <button id="btn-claim-rent" class="btn btn-claim" disabled>Claim $0.00</button>
         <button id="btn-checkout" class="btn btn-checkout" disabled>Checkout (0)</button>
     </div>
+
+    <button id="btn-cheapest"><span class="cheapest-icon">🏷️</span>Cheapest<br>Property</button>
 
     <div id="map"></div>
 
@@ -817,6 +853,9 @@
                 document.getElementById('save-warning-modal').style.display = 'none';
             });
 
+            // Cheapest property button
+            document.getElementById('btn-cheapest').addEventListener('click', flyToCheapestProperty);
+
             // Gift HUD shows info toast
             document.getElementById('gift-hud').addEventListener('click', function() {
                 showToast(`🎁 Free Properties: ${gameState.freeProperties} (2 every hour)`);
@@ -1105,6 +1144,61 @@
         });
 
         /**
+         * CHEAPEST PROPERTY IN RANGE
+         */
+        function flyToCheapestProperty() {
+            if (currentPos.lat === 0 && currentPos.lng === 0) {
+                showToast("Waiting for GPS location... 🛰️");
+                return;
+            }
+
+            let cheapestPrice = Infinity;
+            let cheapestX = 0;
+            let cheapestY = 0;
+            let found = false;
+
+            // Scan tiles in 500m radius
+            const playerGridCoords = getGridCoords(currentPos.lat, currentPos.lng);
+            const playerLatLng = L.latLng(currentPos.lat, currentPos.lng);
+            const radiusInGrid = Math.ceil(MAX_BUY_DISTANCE / (TILE_SIZE * 111000));
+
+            for (let dx = -radiusInGrid; dx <= radiusInGrid; dx++) {
+                for (let dy = -radiusInGrid; dy <= radiusInGrid; dy++) {
+                    let checkX = playerGridCoords.x + dx;
+                    let checkY = playerGridCoords.y + dy;
+                    let key = `${checkX},${checkY}`;
+
+            if (gameState.ownedTiles[key]) continue;
+
+                    let bounds = getTileBounds(checkX, checkY);
+                    let centerLat = (bounds[0][0] + bounds[1][0]) / 2;
+                    let centerLng = (bounds[0][1] + bounds[1][1]) / 2;
+                    let dist = playerLatLng.distanceTo(L.latLng(centerLat, centerLng));
+
+                    if (dist <= MAX_BUY_DISTANCE) {
+                        let price = calculateTilePrice(checkX, checkY);
+                        if (price < cheapestPrice) {
+                            cheapestPrice = price;
+                            cheapestX = checkX;
+                            cheapestY = checkY;
+                            found = true;
+                        }
+                    }
+                }
+            }
+
+            if (found) {
+                let bounds = getTileBounds(cheapestX, cheapestY);
+                let centerLat = (bounds[0][0] + bounds[1][0]) / 2;
+                let centerLng = (bounds[0][1] + bounds[1][1]) / 2;
+                map.flyTo([centerLat, centerLng], 18, { animate: true, duration: 1.5 });
+                showToast(`🏷️ Cheapest: $${cheapestPrice} — flying to it!`);
+            } else {
+                showToast("No unowned properties in range! 🏃‍♂️ Move to a new area.");
+            }
+        }
+
+        /**
          * RENT & GIFT SYSTEM 
          */
         
@@ -1303,9 +1397,10 @@
                 const tileData = gameState.ownedTiles[key];
 
                 const bounds = getTileBounds(x, y);
+                // Always use green border for player's own properties
                 const rect = L.rectangle(bounds, {
-                    color: tileData.border || '#333',
-                    weight: 2,
+                    color: '#2ecc71',
+                    weight: 3,
                     fillColor: tileData.color,        
                     fillOpacity: 0.6
                 });
