@@ -476,6 +476,63 @@
             display: none !important;
         }
 
+        /* Distance money notification */
+        #distance-money {
+            position: absolute;
+            top: 68px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3900;
+            background: rgba(39, 174, 96, 0.9);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+
+        /* Buy mode grid price labels */
+        .leaflet-tooltip.buy-price-label {
+            background: rgba(0,0,0,0.7) !important;
+            border: 1px solid rgba(255,255,255,0.3) !important;
+            border-radius: 4px !important;
+            box-shadow: none !important;
+            color: #f1c40f !important;
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-shadow: none !important;
+            text-align: center;
+            padding: 1px 3px !important;
+            margin: 0 !important;
+            white-space: nowrap;
+        }
+        .leaflet-tooltip.buy-price-label::before {
+            display: none !important;
+        }
+
+        /* Detail labels for owned tiles (zoomed very close) */
+        .leaflet-tooltip.detail-label {
+            background: rgba(0,0,0,0.75) !important;
+            border: none !important;
+            border-radius: 4px !important;
+            box-shadow: none !important;
+            color: #fff !important;
+            font-size: 0.5rem;
+            font-weight: 600;
+            text-shadow: none !important;
+            text-align: left;
+            padding: 2px 4px !important;
+            margin: 0 !important;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .leaflet-tooltip.detail-label::before {
+            display: none !important;
+        }
+
         /* Hide labels and tiles when zoomed out */
         .zoomed-out .rent-label {
             display: none !important;
@@ -486,6 +543,7 @@
         .custom-cluster-icon {
             background: transparent;
         }
+
 
         /* Cheapest Property Button */
         #btn-cheapest {
@@ -601,6 +659,7 @@
         <button class="btn-continue" onclick="closeReveal()">Continue</button>
     </div>
 
+    <div id="distance-money"></div>
     <div id="toast">Message</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -655,6 +714,12 @@
         let currentTileLayer;
 
         let selectedTiles = []; 
+        let buyPriceLayer = L.layerGroup();
+        let detailLayer = L.layerGroup();
+        let lastLat = 0, lastLng = 0;
+        let totalDistanceMeters = 0;
+        let distanceMoneyTotal = 0;
+        let distanceMoneyTimer = null;
 
         /**
          * ENCRYPTION LOGIC
@@ -876,6 +941,8 @@
 
             ownedLayer.addTo(map);
             highlightLayer.addTo(map);
+            buyPriceLayer.addTo(map);
+            detailLayer.addTo(map);
             customClusterLayer.addTo(map);
 
             if (navigator.geolocation) {
@@ -891,9 +958,12 @@
             map.on('click', handleMapClick);
 
             map.on('zoomend', function() {
-                if (map.getZoom() < 16) {
+                const z = map.getZoom();
+                if (z < 16) {
                     map.getContainer().classList.add('zoomed-out');
                     if (map.hasLayer(ownedLayer)) map.removeLayer(ownedLayer);
+                    if (map.hasLayer(buyPriceLayer)) map.removeLayer(buyPriceLayer);
+                    if (map.hasLayer(detailLayer)) map.removeLayer(detailLayer);
                     if (!map.hasLayer(customClusterLayer)) map.addLayer(customClusterLayer);
                     renderClusters();
                 } else {
@@ -901,10 +971,20 @@
                     if (!map.hasLayer(ownedLayer)) map.addLayer(ownedLayer);
                     if (map.hasLayer(customClusterLayer)) map.removeLayer(customClusterLayer);
                 }
+                renderBuyPrices();
+                if (z >= 19) { map.addLayer(detailLayer); renderDetailLabels(); }
+                else { if (map.hasLayer(detailLayer)) map.removeLayer(detailLayer); }
             });
 
             renderOwnedTiles();
             renderClusters();
+            renderBuyPrices();
+            
+            // Re-render on map move for buy prices and details
+            map.on('moveend', function() {
+                renderBuyPrices();
+                if (map.getZoom() >= 19) renderDetailLabels();
+            });
             
             setInterval(calculateRent, 1000); 
             calculateRent(); 
@@ -937,11 +1017,39 @@
         }
 
         function updatePlayerPosition(position) {
-            currentPos = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
+            const newLat = position.coords.latitude;
+            const newLng = position.coords.longitude;
 
+            // Distance money tracking
+            if (lastLat !== 0 && lastLng !== 0) {
+                const distMoved = L.latLng(lastLat, lastLng).distanceTo(L.latLng(newLat, newLng));
+                if (distMoved > 5 && distMoved < 50000) {
+                    totalDistanceMeters += distMoved;
+                    // Every 1000m = $10
+                    const newKm = Math.floor(totalDistanceMeters / 1000);
+                    const oldKm = Math.floor((totalDistanceMeters - distMoved) / 1000);
+                    if (newKm > oldKm) {
+                        const earned = (newKm - oldKm) * 10;
+                        gameState.balance += earned;
+                        distanceMoneyTotal += earned;
+                        // Show distance money notification
+                        const distEl = document.getElementById('distance-money');
+                        if (distEl) {
+                            distEl.innerText = `+$${earned} distance 🏃`;
+                            distEl.style.opacity = '1';
+                            if (distanceMoneyTimer) clearTimeout(distanceMoneyTimer);
+                            distanceMoneyTimer = setTimeout(() => {
+                                distEl.style.opacity = '0';
+                            }, 5000);
+                        }
+                        updateUI();
+                    }
+                }
+            }
+            lastLat = newLat;
+            lastLng = newLng;
+
+            currentPos = { lat: newLat, lng: newLng };
             const playerLatLng = [currentPos.lat, currentPos.lng];
 
             if (!initialZoomDone) {
@@ -1047,6 +1155,7 @@
                 btnClaimRent.style.display = 'none';
                 btnCheckout.style.display = 'block';
                 
+                renderBuyPrices();
                 showToast("Tap tiles inside your 500m radius circle to select.");
             } else {
                 this.classList.remove('active');
@@ -1059,6 +1168,7 @@
                 selectedTiles = [];
                 renderHighlights();
                 updateCheckoutButton();
+                buyPriceLayer.clearLayers();
             }
         });
 
@@ -1518,6 +1628,20 @@
 
                 rect.addTo(ownedLayer);
             }
+        }
+
+        /**
+         * BUY MODE GRID - Shows tile prices when in buy mode
+         */
+        function renderBuyPrices() {
+            buyPriceLayer.clearLayers();
+        }
+
+        /**
+         * DETAIL LABELS - Removed per user request
+         */
+        function renderDetailLabels() {
+            detailLayer.clearLayers();
         }
 
         /**
