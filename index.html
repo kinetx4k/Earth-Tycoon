@@ -1239,17 +1239,17 @@
                 baseHourlyRent += gameState.ownedTiles[key].rentPerHour;
             }
 
-            // Bonus: +1% per property owned
+            // Bonus: +0.5% per property owned
             const propertyCount = Object.keys(gameState.ownedTiles).length;
-            const bonusPercent = propertyCount;
-            const bonusMultiplier = 1 + (bonusPercent / 100);
+            const bonusPercent = propertyCount * 0.5;
+            const bonusMultiplier = 1 + (bonusPercent / 200);
             const totalHourlyRent = baseHourlyRent * bonusMultiplier;
 
             // Update yield display with bonus info
             const bonusDisplay = document.getElementById('hourly-bonus-display');
             const yieldDisplay = document.getElementById('hourly-yield-display');
             if (propertyCount > 0) {
-                bonusDisplay.innerText = `Base $${baseHourlyRent.toFixed(2)} + ${bonusPercent}%`;
+                bonusDisplay.innerText = `Base $${baseHourlyRent.toFixed(2)} + ${bonusPercent.toFixed(1)}%`;
             } else {
                 bonusDisplay.innerText = '';
             }
@@ -1433,7 +1433,7 @@
                 baseRent += gameState.ownedTiles[key].rentPerHour;
             }
             const propCount = Object.keys(gameState.ownedTiles).length;
-            const totalHourlyRent = baseRent * (1 + propCount / 100);
+            const totalHourlyRent = baseRent * (1 + propCount / 200);
 
             const rentEarned = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
             
