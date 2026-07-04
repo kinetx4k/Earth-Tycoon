@@ -371,6 +371,7 @@
     <div id="gift-hud" class="hud">
         <span style="font-size: 1.8rem; margin-bottom: 5px;">🎁</span>
         <span id="gift-count" style="font-weight: 900; font-size: 1rem;">0</span>
+        <span id="gift-countdown" style="font-size: 0.65rem; opacity: 0.85; margin-top: 3px;">--:--:--</span>
     </div>
 
     <input type="file" id="file-input" accept=".json,.enc">
@@ -444,7 +445,8 @@
             totalRentGenerated: 0,
             pendingGifts: 0,
             lastGiftHourTime: Date.now(),
-            lastGiftDayString: new Date().toLocaleDateString()
+            lastGiftDayString: new Date().toLocaleDateString(),
+            lastPopupShownTime: 0
         };
 
         let map;
@@ -661,6 +663,10 @@
 
             // Setup Gift Button
             document.getElementById('gift-hud').addEventListener('click', claimGifts);
+            
+            // Start countdown timer update
+            setInterval(updateGiftCountdown, 1000);
+            updateGiftCountdown();
         }
 
         function updatePlayerPosition(position) {
@@ -1104,7 +1110,73 @@
             }
         }
 
-        document.getElementById('btn-claim-rent').addEventListener('click', function() {
+        /**
+         * GIFT COUNTDOWN - Shows time remaining until next even-hour gift (every 2 hours)
+         */
+        function getNextEvenHour() {
+            const now = new Date();
+            let nextHour = now.getHours();
+            let nextMin = now.getMinutes();
+            let nextSec = now.getSeconds();
+            
+            // Find next even hour (0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22)
+            // If current time is exactly on an even hour and no seconds have passed, use current hour
+            let remainder = (nextMin * 60 + nextSec); // seconds into current hour
+            
+            // Move to next even hour
+            if (nextHour % 2 !== 0) {
+                // Odd hour -> next hour is even
+                nextHour = nextHour + 1;
+            } else {
+                // Even hour -> check if we're past the start (any minutes/seconds in)
+                // Next even hour is 2 hours away if we're already into this even hour
+                // But if it's exactly 00:00:00, the gift should already be available
+                if (remainder > 0) {
+                    nextHour = nextHour + 2;
+                }
+            }
+            
+            // Handle day wrap
+            if (nextHour >= 24) {
+                nextHour = nextHour % 24;
+            }
+            
+            const target = new Date(now);
+            target.setHours(nextHour, 0, 0, 0);
+            
+            // If target is in the past (shouldn't happen but safety), add 2 hours
+            if (target.getTime() <= now.getTime()) {
+                target.setTime(target.getTime() + 2 * MS_PER_HOUR);
+            }
+            
+            return target;
+        }
+
+        function updateGiftCountdown() {
+            const countdownEl = document.getElementById('gift-countdown');
+            if (!countdownEl) return;
+            
+            const now = new Date();
+            const nextEvenHour = getNextEvenHour();
+            const diffMs = nextEvenHour.getTime() - now.getTime();
+            
+            if (diffMs <= 0) {
+                countdownEl.innerText = '🎁 Available!';
+                countdownEl.style.color = '#f1c40f';
+                return;
+            }
+            
+            const totalSeconds = Math.floor(diffMs / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            const pad = (n) => String(n).padStart(2, '0');
+            countdownEl.innerText = `⏳ ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            countdownEl.style.color = '#ffffff';
+        }
+
+            document.getElementById('btn-claim-rent').addEventListener('click', function() {
             const now = new Date();
             const lastClaim = new Date(gameState.lastRentClaimTime);
             const timePassedMs = now.getTime() - lastClaim.getTime();
@@ -1125,7 +1197,16 @@
                 updateUI();
                 calculateRent();
                 
-                document.getElementById('save-warning-modal').style.display = 'block';
+                // Only show save-warning popup once per hour
+                const timeSinceLastPopup = now.getTime() - (gameState.lastPopupShownTime || 0);
+                if (timeSinceLastPopup >= MS_PER_HOUR) {
+                    gameState.lastPopupShownTime = now.getTime();
+                    saveGame();
+                    document.getElementById('save-warning-modal').style.display = 'block';
+                } else {
+                    const minsUntilPopup = Math.ceil((MS_PER_HOUR - timeSinceLastPopup) / 60000);
+                    showToast(`Rent claimed! ✅ Backup reminder in ~${minsUntilPopup}min`);
+                }
             }
         });
 
