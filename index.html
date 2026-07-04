@@ -609,7 +609,7 @@
         /**
          * GLOBAL CONSTANTS & CONFIGURATION
          */
-        const STARTING_BALANCE = 5000;
+        const STARTING_BALANCE = 2500;
         const TILE_SIZE = 0.0002; // Grid size in degrees (~22 meters)
         const MAX_BUY_DISTANCE = 500; // Maximum purchase distance in meters
         
@@ -1319,8 +1319,34 @@
             if (!countdownEl) return;
             
             const now = new Date();
-            const nextHour = getNextFullHour();
-            const diffMs = nextHour.getTime() - now.getTime();
+            
+            // Check if it's time to award free properties immediately
+            let timeSinceGiftMs = now.getTime() - gameState.lastGiftHourTime;
+            if (timeSinceGiftMs >= MS_PER_HOUR) {
+                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HOUR);
+                let newFree = cyclesPassed * 2;
+                if (newFree > 0) {
+                    gameState.freeProperties += newFree;
+                    gameState.lastGiftHourTime += cyclesPassed * MS_PER_HOUR;
+                    saveGame();
+                    showToast(`🎁 +${newFree} Free Properties!`);
+                    // Update free badge immediately
+                    const freeBadge = document.getElementById('free-badge');
+                    if (freeBadge) {
+                        freeBadge.classList.remove('hidden');
+                        freeBadge.innerText = gameState.freeProperties;
+                    }
+                    document.getElementById('gift-count').innerText = gameState.freeProperties;
+                    const giftHud = document.getElementById('gift-hud');
+                    giftHud.style.background = '#8e44ad';
+                    giftHud.style.transform = 'scale(1.05)';
+                }
+            }
+            
+            // Calculate time remaining until next full hour
+            const target = new Date(now);
+            target.setHours(target.getHours() + 1, 0, 0, 0);
+            const diffMs = target.getTime() - now.getTime();
             
             if (diffMs <= 0) {
                 countdownEl.innerText = '🎁 Available!';
