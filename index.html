@@ -48,8 +48,9 @@
             display: flex;
             gap: 10px;
             width: 95%;
-            max-width: 500px;
+            max-width: 600px;
             justify-content: space-between;
+            flex-wrap: wrap;
         }
 
         .stat-box {
@@ -57,10 +58,11 @@
             flex-direction: column;
             align-items: center;
             flex: 1;
+            min-width: 60px;
         }
 
         .stat-label {
-            font-size: 0.70rem;
+            font-size: 0.65rem;
             color: #666;
             text-transform: uppercase;
             font-weight: bold;
@@ -93,7 +95,7 @@
             padding: 15px;
             border: none;
             border-radius: 12px;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: bold;
             color: white;
             cursor: pointer;
@@ -135,6 +137,22 @@
             background: #bdc3c7;
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* Gifts Tab */
+        #gift-hud {
+            top: 100px;
+            right: 15px;
+            padding: 15px;
+            cursor: pointer;
+            background: #9b59b6;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(155, 89, 182, 0.6);
+            transition: transform 0.2s, background 0.3s;
         }
 
         /* Modals / Popups */
@@ -329,28 +347,37 @@
             <span class="stat-value money" id="balance-display">$5,000.00</span>
         </div>
         <div class="stat-box">
+            <span class="stat-label">$/Hour</span>
+            <span class="stat-value money" id="hourly-yield-display">$0.00</span>
+        </div>
+        <div class="stat-box">
             <span class="stat-label">Properties</span>
             <span class="stat-value" id="property-count">0</span>
         </div>
         <div class="stat-box">
-            <span class="stat-label">Rent Pending</span>
+            <span class="stat-label">Pending</span>
             <span class="stat-value money" id="rent-display">$0.00</span>
         </div>
         <div class="stat-box" id="btn-manual-save" style="cursor: pointer; background: #eaedf0; border-radius: 8px; padding: 2px 5px;">
             <span class="stat-label">Backup</span>
-            <span class="stat-value" style="color: #2980b9; font-size: 0.9rem;">💾 Save</span>
+            <span class="stat-value" style="color: #2980b9; font-size: 0.85rem;">💾 Save</span>
         </div>
         <div class="stat-box" id="btn-manual-load" style="cursor: pointer; background: #eaedf0; border-radius: 8px; padding: 2px 5px;">
             <span class="stat-label">Restore</span>
-            <span class="stat-value" style="color: #8e44ad; font-size: 0.9rem;">📂 Load</span>
+            <span class="stat-value" style="color: #8e44ad; font-size: 0.85rem;">📂 Load</span>
         </div>
+    </div>
+
+    <div id="gift-hud" class="hud">
+        <span style="font-size: 1.8rem; margin-bottom: 5px;">🎁</span>
+        <span id="gift-count" style="font-weight: 900; font-size: 1rem;">0</span>
     </div>
 
     <input type="file" id="file-input" accept=".json,.enc">
 
     <div id="bottom-bar" class="hud">
         <button id="btn-toggle-buy" class="btn btn-buy">Buy Property</button>
-        <button id="btn-claim-rent" class="btn btn-claim" disabled>Claim Rent</button>
+        <button id="btn-claim-rent" class="btn btn-claim" disabled>Claim $0.00</button>
         <button id="btn-checkout" class="btn btn-checkout" disabled>Checkout (0)</button>
     </div>
 
@@ -414,7 +441,10 @@
             balance: STARTING_BALANCE,
             ownedTiles: {}, 
             lastRentClaimTime: Date.now(),
-            totalRentGenerated: 0
+            totalRentGenerated: 0,
+            pendingGifts: 0,
+            lastGiftHourTime: Date.now(),
+            lastGiftDayString: new Date().toLocaleDateString()
         };
 
         let map;
@@ -426,7 +456,7 @@
         
         let highlightLayer = L.layerGroup(); 
         let ownedLayer = L.layerGroup();     
-        let customClusterLayer = L.layerGroup(); // For zoomed out pins
+        let customClusterLayer = L.layerGroup(); 
 
         let selectedTiles = []; 
 
@@ -505,7 +535,7 @@
                     const parsedData = decryptData(contents);
                     
                     if (parsedData && typeof parsedData.balance === 'number') {
-                        gameState = parsedData;
+                        gameState = { ...gameState, ...parsedData };
                         saveGame();
                         updateUI();
                         renderOwnedTiles();
@@ -570,7 +600,6 @@
             loadGame();
             updateUI();
 
-            // Start completely zoomed out
             map = L.map('map', {
                 zoomControl: false, 
                 doubleClickZoom: false
@@ -597,7 +626,6 @@
 
             map.on('click', handleMapClick);
 
-            // Handle zoom events to show/hide layers and labels
             map.on('zoomend', function() {
                 if (map.getZoom() < 16) {
                     map.getContainer().classList.add('zoomed-out');
@@ -630,6 +658,9 @@
                 exportSaveFile();
                 document.getElementById('save-warning-modal').style.display = 'none';
             });
+
+            // Setup Gift Button
+            document.getElementById('gift-hud').addEventListener('click', claimGifts);
         }
 
         function updatePlayerPosition(position) {
@@ -660,7 +691,6 @@
                     dashArray: '6, 6'
                 }).addTo(map);
 
-                // Slow zoom into the player's location
                 map.flyTo(playerLatLng, 17, {
                     animate: true,
                     duration: 4.0 
@@ -893,7 +923,7 @@
         });
 
         /**
-         * RENT SYSTEM & REWARDS
+         * RENT & GIFT SYSTEM 
          */
 
         function grantFreeProperties(amount) {
@@ -944,6 +974,73 @@
             }
             return granted;
         }
+
+        function claimGifts() {
+            if (gameState.pendingGifts > 0) {
+                let totalGifts = gameState.pendingGifts;
+                gameState.pendingGifts = 0;
+                
+                let allGrantedProperties = [];
+                let totalCashWon = 0;
+
+                for (let i = 0; i < totalGifts; i++) {
+                    let roll = Math.random();
+                    if (roll < 0.60) { 
+                        // 60% Chance: 50 - 150 Dollar
+                        let cash = Math.floor(Math.random() * 101) + 50;
+                        totalCashWon += cash;
+                    } else if (roll < 0.85) { 
+                        // 25% Chance: 1 Property
+                        allGrantedProperties.push(...grantFreeProperties(1));
+                    } else if (roll < 0.95) { 
+                        // 10% Chance: 150 - 500 Dollar
+                        let cash = Math.floor(Math.random() * 351) + 150;
+                        totalCashWon += cash;
+                    } else if (roll < 0.99) { 
+                        // 4% Chance: 2 Properties
+                        allGrantedProperties.push(...grantFreeProperties(2));
+                    } else if (roll < 0.999) { 
+                        // 0.9% Chance: 500 - 1000 Dollar
+                        let cash = Math.floor(Math.random() * 501) + 500;
+                        totalCashWon += cash;
+                    } else { 
+                        // 0.1% Chance: MEGA PULL 5 Properties
+                        allGrantedProperties.push(...grantFreeProperties(5));
+                    }
+                }
+
+                if (totalCashWon > 0) {
+                    gameState.balance += totalCashWon;
+                }
+
+                saveGame();
+                updateUI();
+                calculateRent();
+                renderOwnedTiles();
+                renderClusters();
+                
+                let revealItems = [];
+                if (totalCashWon > 0) {
+                    revealItems.push({
+                        name: `💰 CASH PRIZE`,
+                        color: '#2ecc71',
+                        border: '#27ae60',
+                        rentPerHour: 0,
+                        isCash: true,
+                        amount: totalCashWon
+                    });
+                }
+                revealItems.push(...allGrantedProperties);
+
+                if (revealItems.length > 0) {
+                    showAnimatedRevealScreen(revealItems);
+                } else {
+                    showToast("No free space nearby for your property gifts! 😢 Move to a new area.");
+                }
+            } else {
+                showToast("No gifts available right now! Come back later. ⏳");
+            }
+        }
         
         function calculateRent() {
             const now = new Date();
@@ -956,38 +1053,54 @@
                 totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
             }
 
+            document.getElementById('hourly-yield-display').innerText = `$${totalHourlyRent.toFixed(2)}`;
+
             const exactPendingRent = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
             const rentDisplay = document.getElementById('rent-display');
             rentDisplay.innerText = `$${exactPendingRent.toFixed(4)}`;
 
             const claimBtn = document.getElementById('btn-claim-rent');
 
-            const canClaim = (now.getHours() !== lastClaim.getHours()) || 
-                             (now.getDate() !== lastClaim.getDate()) || 
-                             (timePassedMs >= MS_PER_HOUR);
-
-            if (canClaim && totalHourlyRent > 0) {
+            if (exactPendingRent > 0) {
                 claimBtn.disabled = false;
-                claimBtn.innerText = 'Claim Rent';
+                claimBtn.innerText = `Claim $${exactPendingRent.toFixed(2)}`;
                 rentDisplay.style.color = '#e67e22'; 
             } else {
                 claimBtn.disabled = true;
+                claimBtn.innerText = `Claim $0.00`;
                 rentDisplay.style.color = '#2c3e50';
-                
-                let nextHour = new Date(now);
-                nextHour.setHours(now.getHours() + 1, 0, 0, 0);
-                
-                let msUntilNextHour = nextHour.getTime() - now.getTime();
-                let totalSeconds = Math.floor(msUntilNextHour / 1000);
-                
-                const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-                const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-                
-                if (totalHourlyRent > 0) {
-                    claimBtn.innerText = `Claim Rent (${minutes}:${seconds})`;
-                } else {
-                    claimBtn.innerText = `Claim Rent`;
-                }
+            }
+
+            // Gift Generation Logic (Every 2 Hours = 1 Gift)
+            if (!gameState.lastGiftHourTime) gameState.lastGiftHourTime = now.getTime();
+            if (!gameState.lastGiftDayString) gameState.lastGiftDayString = now.toLocaleDateString();
+            if (gameState.pendingGifts === undefined) gameState.pendingGifts = 0;
+
+            let timeSinceGiftHourMs = now.getTime() - gameState.lastGiftHourTime;
+            if (timeSinceGiftHourMs >= (MS_PER_HOUR * 2)) {
+                let cyclesPassed = Math.floor(timeSinceGiftHourMs / (MS_PER_HOUR * 2));
+                gameState.pendingGifts += cyclesPassed;
+                gameState.lastGiftHourTime += cyclesPassed * (MS_PER_HOUR * 2);
+            }
+
+            let currentDayStr = now.toLocaleDateString();
+            if (gameState.lastGiftDayString !== currentDayStr) {
+                // Crossed midnight, add 2 bonus gifts
+                gameState.pendingGifts += 2;
+                gameState.lastGiftDayString = currentDayStr;
+            }
+
+            const giftCountDisplay = document.getElementById('gift-count');
+            const giftHud = document.getElementById('gift-hud');
+            
+            giftCountDisplay.innerText = gameState.pendingGifts;
+
+            if (gameState.pendingGifts > 0) {
+                giftHud.style.background = '#8e44ad';
+                giftHud.style.transform = 'scale(1.05)';
+            } else {
+                giftHud.style.background = '#bdc3c7';
+                giftHud.style.transform = 'scale(1)';
             }
         }
 
@@ -996,39 +1109,21 @@
             const lastClaim = new Date(gameState.lastRentClaimTime);
             const timePassedMs = now.getTime() - lastClaim.getTime();
             
-            const canClaim = (now.getHours() !== lastClaim.getHours()) || 
-                             (now.getDate() !== lastClaim.getDate()) || 
-                             (timePassedMs >= MS_PER_HOUR);
+            let totalHourlyRent = 0;
+            for (let key in gameState.ownedTiles) {
+                totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
+            }
 
-            if (canClaim) {
-                let totalHourlyRent = 0;
-                for (let key in gameState.ownedTiles) {
-                    totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
-                }
-
-                let hoursPassed = Math.floor(timePassedMs / MS_PER_HOUR);
-                if (hoursPassed < 1) hoursPassed = 1; 
-                
-                const newlyGranted = grantFreeProperties(hoursPassed * 2);
-
-                const rentEarned = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
-                
+            const rentEarned = (timePassedMs / MS_PER_HOUR) * totalHourlyRent;
+            
+            if (rentEarned > 0) {
                 gameState.balance += rentEarned;
                 gameState.totalRentGenerated += rentEarned;
-                
                 gameState.lastRentClaimTime = now.getTime();
 
                 saveGame();
                 updateUI();
                 calculateRent();
-                renderOwnedTiles(); 
-                renderClusters();
-                
-                if (newlyGranted.length > 0) {
-                    setTimeout(() => {
-                        showAnimatedRevealScreen(newlyGranted);
-                    }, 400);
-                }
                 
                 document.getElementById('save-warning-modal').style.display = 'block';
             }
@@ -1082,27 +1177,34 @@
             }, 3000);
         }
 
-        function showAnimatedRevealScreen(acquiredTiles) {
+        function showAnimatedRevealScreen(acquiredItems) {
             const screen = document.getElementById('reveal-screen');
             const listContainer = document.getElementById('reveal-list');
             const title = document.getElementById('reveal-name');
             
             listContainer.innerHTML = ''; 
             
-            title.innerText = `${acquiredTiles.length} Tile${acquiredTiles.length > 1 ? 's' : ''} Acquired!`;
+            title.innerText = `${acquiredItems.length} Reward${acquiredItems.length > 1 ? 's' : ''} Acquired!`;
             
-            acquiredTiles.forEach((tile, index) => {
+            acquiredItems.forEach((item, index) => {
                 const delay = index * 0.15; 
                 
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'reveal-item';
-                itemDiv.style.borderLeftColor = tile.border;
+                itemDiv.style.borderLeftColor = item.border;
                 itemDiv.style.animationDelay = `${delay}s`;
                 
-                itemDiv.innerHTML = `
-                    <span class="reveal-item-name" style="color: ${tile.color};">${tile.name}</span>
-                    <span class="reveal-item-rent">+$${tile.rentPerHour.toFixed(2)} / hr</span>
-                `;
+                if(item.isCash) {
+                    itemDiv.innerHTML = `
+                        <span class="reveal-item-name" style="color: ${item.color};">${item.name}</span>
+                        <span class="reveal-item-rent">+$${item.amount.toLocaleString()}</span>
+                    `;
+                } else {
+                    itemDiv.innerHTML = `
+                        <span class="reveal-item-name" style="color: ${item.color};">${item.name}</span>
+                        <span class="reveal-item-rent">+$${item.rentPerHour.toFixed(2)} / hr</span>
+                    `;
+                }
                 
                 listContainer.appendChild(itemDiv);
             });
