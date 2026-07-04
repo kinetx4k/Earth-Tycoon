@@ -681,9 +681,8 @@
         function renderClusters() {
             customClusterLayer.clearLayers();
             
-            // Group tiles based on a larger grid to create clusters
             let clusters = {};
-            let clusterGridSize = 0.02; // Larger degree grid for grouping
+            let clusterGridSize = 0.02; 
             
             for (let key in gameState.ownedTiles) {
                 let [x, y] = key.split(',').map(Number);
@@ -708,18 +707,13 @@
                 let avgLat = c.latSum / c.count;
                 let avgLng = c.lngSum / c.count;
                 
-                let iconHtml = `<div style="background:#e74c3c; color:white; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-weight:900; border:3px solid white; box-shadow:0 0 15px rgba(0,0,0,0.6); text-shadow: 1px 1px 2px black;">${c.count}</div>`;
-                
-                if (c.count === 1) {
-                    // Single pin
-                    iconHtml = `<div style="background:#3498db; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.6);"></div>`;
-                }
+                let iconHtml = `<div style="background:#e74c3c; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.6);"></div>`;
                 
                 let icon = L.divIcon({
                     html: iconHtml,
                     className: 'custom-cluster-icon',
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18]
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
                 });
                 
                 L.marker([avgLat, avgLng], {icon: icon}).addTo(customClusterLayer);
@@ -955,7 +949,6 @@
             const now = new Date();
             const lastClaim = new Date(gameState.lastRentClaimTime);
             
-            // Realtime exact pending rent math
             const timePassedMs = now.getTime() - lastClaim.getTime();
             
             let totalHourlyRent = 0;
@@ -969,7 +962,6 @@
 
             const claimBtn = document.getElementById('btn-claim-rent');
 
-            // Check if we crossed a full clock hour boundary since last claim
             const canClaim = (now.getHours() !== lastClaim.getHours()) || 
                              (now.getDate() !== lastClaim.getDate()) || 
                              (timePassedMs >= MS_PER_HOUR);
@@ -982,7 +974,6 @@
                 claimBtn.disabled = true;
                 rentDisplay.style.color = '#2c3e50';
                 
-                // Calculate countdown to the NEXT full clock hour (e.g., 14:00, 15:00)
                 let nextHour = new Date(now);
                 nextHour.setHours(now.getHours() + 1, 0, 0, 0);
                 
@@ -1015,9 +1006,8 @@
                     totalHourlyRent += gameState.ownedTiles[key].rentPerHour;
                 }
 
-                // Grant 2 Free Properties per full clock hour passed
                 let hoursPassed = Math.floor(timePassedMs / MS_PER_HOUR);
-                if (hoursPassed < 1) hoursPassed = 1; // Minimum 1 hour passed if clock ticked over
+                if (hoursPassed < 1) hoursPassed = 1; 
                 
                 const newlyGranted = grantFreeProperties(hoursPassed * 2);
 
@@ -1026,7 +1016,6 @@
                 gameState.balance += rentEarned;
                 gameState.totalRentGenerated += rentEarned;
                 
-                // Reset to exact current timestamp
                 gameState.lastRentClaimTime = now.getTime();
 
                 saveGame();
