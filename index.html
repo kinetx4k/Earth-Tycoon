@@ -733,6 +733,7 @@
         ];
 
         const MS_PER_HOUR = 1000 * 60 * 60;
+        const MS_PER_HALF_HOUR = MS_PER_HOUR / 2;
         
         // Encryption Key for Save Files
         const ENCRYPTION_KEY = "EarthTycoonSecureSaveV1";
@@ -947,7 +948,7 @@
             
             // Slightly more expensive based on owned properties
             const ownedCount = Object.keys(gameState.ownedTiles).length;
-            const priceScale = 1 + (ownedCount * 0.01); // +1% per owned property
+            const priceScale = 1 + (ownedCount * 0.02); // +2% per owned property
             finalPrice = Math.floor(finalPrice * priceScale);
             
             return Math.max(20, Math.min(800, finalPrice));
@@ -1062,7 +1063,9 @@
 
             // Gift HUD shows info toast
             document.getElementById('gift-hud').addEventListener('click', function() {
-                showToast(`🎁 Free Properties: ${gameState.freeProperties} (1 every 30min)`);
+                const interval = getGiftIntervalMs();
+            const mins = Math.floor(interval / 60000);
+            showToast(`🎁 Free Properties: ${gameState.freeProperties} (1 every ${mins}min)`);
             });
             
             // Start countdown timer update
@@ -1491,15 +1494,16 @@
                 rentDisplay.style.color = '#2c3e50';
             }
 
-            // Free Property Timer - awards 1 free property every 30 minutes
+            // Free Property Timer - interval depends on property count
             if (!gameState.lastGiftHourTime) gameState.lastGiftHourTime = now.getTime();
             if (gameState.freeProperties === undefined) gameState.freeProperties = 0;
 
+            const giftIntervalMs = getGiftIntervalMs();
             let timeSinceGiftMs = now.getTime() - gameState.lastGiftHourTime;
-            if (timeSinceGiftMs >= MS_PER_HALF_HOUR) {
-                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HALF_HOUR);
+            if (timeSinceGiftMs >= giftIntervalMs) {
+                let cyclesPassed = Math.floor(timeSinceGiftMs / giftIntervalMs);
                 gameState.freeProperties += cyclesPassed;
-                gameState.lastGiftHourTime += cyclesPassed * MS_PER_HALF_HOUR;
+                gameState.lastGiftHourTime += cyclesPassed * giftIntervalMs;
                 saveGame();
             }
 
@@ -1522,38 +1526,26 @@
         }
 
         /**
-         * GIFT COUNTDOWN - Shows time remaining until next half hour gift (every 30 min)
+         * GIFT SYSTEM - Interval scales with property count
          */
-        const MS_PER_HALF_HOUR = MS_PER_HOUR / 2;
-
-        function getNextHalfHour() {
-            const now = new Date();
-            const target = new Date(now);
-            const mins = target.getMinutes();
-            const secs = target.getSeconds();
-            
-            if (mins < 30) {
-                // Go to next :30
-                target.setMinutes(30, 0, 0);
-            } else {
-                // Go to next :00 of next hour
-                target.setHours(target.getHours() + 1, 0, 0, 0);
-            }
-            
-            return target;
+        function getGiftIntervalMs() {
+            const count = Object.keys(gameState.ownedTiles).length;
+            if (count >= 100) return MS_PER_HOUR * 6;   // 6 hours
+            if (count >= 50) return MS_PER_HOUR * 2;    // 2 hours
+            if (count >= 25) return MS_PER_HOUR * 1;    // 1 hour
+            return MS_PER_HOUR / 2;                      // 30 min (default)
         }
 
         function updateGiftCountdown() {
-            // Check every second if it's time to award free properties
+            const giftIntervalMs = getGiftIntervalMs();
             let timeSinceGiftMs = Date.now() - gameState.lastGiftHourTime;
-            if (timeSinceGiftMs >= MS_PER_HALF_HOUR) {
-                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HALF_HOUR);
+            if (timeSinceGiftMs >= giftIntervalMs) {
+                let cyclesPassed = Math.floor(timeSinceGiftMs / giftIntervalMs);
                 if (cyclesPassed > 0) {
                     gameState.freeProperties += cyclesPassed;
-                    gameState.lastGiftHourTime += cyclesPassed * MS_PER_HALF_HOUR;
+                    gameState.lastGiftHourTime += cyclesPassed * giftIntervalMs;
                     saveGame();
                     showToast(`🎁 +${cyclesPassed} Free Propert${cyclesPassed > 1 ? 'ies' : 'y'}!`);
-                    // Update free badge immediately
                     const freeBadge = document.getElementById('free-badge');
                     if (freeBadge) {
                         freeBadge.classList.remove('hidden');
