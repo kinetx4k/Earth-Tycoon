@@ -636,7 +636,8 @@
             totalRentGenerated: 0,
             freeProperties: 0,
             lastGiftHourTime: Date.now(),
-            lastPopupShownTime: 0
+            lastPopupShownTime: 0,
+            lastActiveTime: Date.now()
         };
 
         let map;
@@ -693,9 +694,62 @@
             } else {
                 saveGame();
             }
+
+            // Calculate offline earnings
+            calculateOfflineEarnings();
+        }
+
+        function calculateOfflineEarnings() {
+            const now = Date.now();
+            const lastActive = gameState.lastActiveTime || now;
+            const offlineMs = now - lastActive;
+
+            if (offlineMs < 60000) return; // Less than 1 minute, skip
+
+            // Offline rent earnings
+            let baseRent = 0;
+            for (let key in gameState.ownedTiles) {
+                baseRent += gameState.ownedTiles[key].rentPerHour;
+            }
+            const propCount = Object.keys(gameState.ownedTiles).length;
+            const bonusMultiplier = 1 + (propCount / 200);
+            const totalHourlyRent = baseRent * bonusMultiplier;
+
+            if (totalHourlyRent > 0) {
+                const offlineRentEarned = (offlineMs / MS_PER_HOUR) * totalHourlyRent;
+                gameState.balance += offlineRentEarned;
+                gameState.totalRentGenerated += offlineRentEarned;
+            }
+
+            // Offline free properties
+            if (!gameState.lastGiftHourTime) gameState.lastGiftHourTime = lastActive;
+            let timeSinceGiftMs = now - gameState.lastGiftHourTime;
+            if (timeSinceGiftMs >= MS_PER_HALF_HOUR) {
+                let cyclesPassed = Math.floor(timeSinceGiftMs / MS_PER_HALF_HOUR);
+                gameState.freeProperties += cyclesPassed;
+                gameState.lastGiftHourTime += cyclesPassed * MS_PER_HALF_HOUR;
+            }
+
+            // Update last active time
+            gameState.lastActiveTime = now;
+            saveGame();
+
+            // Show offline summary
+            const offlineMinutes = Math.floor(offlineMs / 60000);
+            const offlineHours = Math.floor(offlineMinutes / 60);
+            const remainMins = offlineMinutes % 60;
+            const timeStr = offlineHours > 0 ? `${offlineHours}h ${remainMins}m` : `${offlineMinutes}m`;
+            const rentEarned = (offlineMs / MS_PER_HOUR) * totalHourlyRent;
+            
+            if (rentEarned > 0 || offlineMs >= MS_PER_HALF_HOUR) {
+                setTimeout(() => {
+                    showToast(`⏰ Offline for ${timeStr}! Earned $${rentEarned.toFixed(2)} + ${Math.floor(offlineMs / MS_PER_HALF_HOUR)} free properties!`);
+                }, 1500);
+            }
         }
 
         function saveGame() {
+            gameState.lastActiveTime = Date.now();
             const encrypted = encryptData(gameState);
             localStorage.setItem('earthTycoonEncryptedState', encrypted);
         }
