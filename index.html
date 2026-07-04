@@ -948,7 +948,7 @@
             
             // Slightly more expensive based on owned properties
             const ownedCount = Object.keys(gameState.ownedTiles).length;
-            const priceScale = 1 + (ownedCount * 0.08091); // +2% per owned property
+            const priceScale = 1 + (ownedCount * 0.02); // +2% per owned property
             finalPrice = Math.floor(finalPrice * priceScale);
             
             return Math.max(20, Math.min(800999999999999999999999999999999999999999999999999999999, finalPrice));
