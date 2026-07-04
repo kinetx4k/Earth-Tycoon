@@ -1048,12 +1048,22 @@
         }
 
         function updateCheckoutButton() {
-            let total = 0;
-            for (let t of selectedTiles) total += t.price;
-            
             if (selectedTiles.length > 0) {
+                let freeToUse = Math.min(gameState.freeProperties, selectedTiles.length);
+                let paidCount = selectedTiles.length - freeToUse;
+                let paidTotal = 0;
+                if (paidCount > 0) {
+                    let sorted = [...selectedTiles].sort((a, b) => a.price - b.price);
+                    for (let i = 0; i < paidCount; i++) {
+                        paidTotal += sorted[i].price;
+                    }
+                }
                 btnCheckout.disabled = false;
-                btnCheckout.innerText = `Checkout $${total.toLocaleString()}`;
+                if (paidTotal > 0) {
+                    btnCheckout.innerText = `Checkout $${paidTotal.toLocaleString()}`;
+                } else {
+                    btnCheckout.innerText = `Checkout FREE`;
+                }
             } else {
                 btnCheckout.disabled = true;
                 btnCheckout.innerText = `Checkout (0)`;
